@@ -1,39 +1,50 @@
-// 1. При загрузке страницы спрашиваем у браузера наши форумы и задачи
+/**
+ * RP Task Tracker - Content Script
+ * Injected into active web pages. Responsible for parsing page data,
+ * injecting the floating action button (FAB), and handling task creation directly from the forum.
+ */
+
+// 1. Fetch extension configuration and task list on page load
 chrome.storage.local.get(['savedForums', 'rpgTasks'], (result) => {
     const forums = result.savedForums || [];
     let tasks = result.rpgTasks || [];
     const currentHost = window.location.hostname;
 
-    // Ищем, есть ли текущий сайт в нашем списке (сравниваем домены)
+    // Check if the current website matches any of the user's saved forums
     const matchedForum = forums.find(f => currentHost.includes(f.url) || f.url.includes(currentHost));
 
-    // Если форум найден в базе — инжектим кнопку
     if (matchedForum) {
         injectUI(matchedForum, tasks);
     }
 });
 
+/**
+ * Injects the Floating Action Button (FAB) and Task Modal into the target DOM.
+ * @param {Object} forum - The matched forum configuration object
+ * @param {Array<Object>} tasks - Current array of saved tasks
+ */
 function injectUI(forum, tasks) {
-    // 2. Создаем плавающую кнопку
+    // --- Create Floating Button ---
     const btn = document.createElement('button');
     btn.id = 'rpt-floating-btn';
     btn.innerHTML = '📝';
     btn.title = 'Добавить в трекер долгов';
     document.body.appendChild(btn);
 
-    // 3. Создаем мини-модальное окно
+    // --- Create Modal Container ---
     const modal = document.createElement('div');
     modal.id = 'rpt-modal';
     
-    // Очищаем тайтл (Rusff обычно ставит тире, вытаскиваем первую часть до тире)
+    // Parse the forum topic title, removing standard trailing elements
     let cleanTitle = document.title.split(' - ')[0].trim();
     
-    // Если у юзера указано несколько персонажей, берем первого по умолчанию
+    // Extract default character if specified in settings
     let defaultChar = forum.characters ? forum.characters.split(',')[0].trim() : '';
 
-    // Получаем сегодня в формате YYYY-MM-DD для подстановки по умолчанию
+    // Get current date for default value in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0];
 
+    // Build Modal HTML
     modal.innerHTML = `
         <span class="rpt-close" id="rpt-close-btn">&times;</span>
         <h4 style="margin: 0; color: #64ffda; font-size: 16px;">Новый долг: ${forum.name}</h4>
@@ -57,15 +68,21 @@ function injectUI(forum, tasks) {
     `;
     document.body.appendChild(modal);
 
+    // --- Event Listeners ---
+    
+    // Toggle modal visibility
     btn.addEventListener('click', () => modal.classList.toggle('rpt-active'));
+
+    // Close modal via 'X' button
     document.getElementById('rpt-close-btn').addEventListener('click', () => modal.classList.remove('rpt-active'));
 
+    // Handle task creation and storage
     document.getElementById('rpt-save-btn').addEventListener('click', () => {
         const title = document.getElementById('rpt-title').value;
         const char = document.getElementById('rpt-char').value;
         const type = document.getElementById('rpt-type').value;
         const date = document.getElementById('rpt-date').value;
-        const url = window.location.href;
+        const url = window.location.href; // Capture exact page URL
 
         if (!date) return alert('Укажи дату!');
 
@@ -76,15 +93,19 @@ function injectUI(forum, tasks) {
             url: url,
             tag: char,
             type: type,
-            date: date, // Теперь берем железно выбранную дату
+            date: date,
             completed: false,
             archived: false
         };
 
         tasks.push(newTask);
+        
+        // Persist data and provide visual feedback
         chrome.storage.local.set({ rpgTasks: tasks }, () => {
             btn.innerHTML = '✅';
             modal.classList.remove('rpt-active');
+
+            // Reset button icon after 2 seconds
             setTimeout(() => btn.innerHTML = '📝', 2000);
         });
     });

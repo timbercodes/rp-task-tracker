@@ -8,12 +8,17 @@
 </head>
 <body>
 
-    <!-- ЭКРАН ОНБОРДИНГА -->
+    <!-- ==========================================
+         VIEW 1: ONBOARDING & SETTINGS
+         Displayed to new users or when 'Settings' is clicked.
+         Handles forum configuration and character lists.
+         ========================================== -->
     <main id="onboarding-view" class="view-container">
         <div class="onboarding-card">
             <h1>Добро пожаловать в трекер! 🎲</h1>
             <p>Давай добавим твои форумы, чтобы настроить доску.</p>
 
+            <!-- Forum Input Form -->
             <div class="form-group">
                 <input type="text" id="forum-name" placeholder="Название форума (например, Example RPG)">
                 
@@ -25,25 +30,32 @@
                 <button id="btn-add-forum" class="primary-btn">Добавить форум</button>
             </div>
 
-            <!-- Сюда будут падать добавленные форумы -->
+            <!-- Dynamic List of Saved Forums -->
             <div id="added-forums-list" class="forums-list"></div>
 
             <button id="btn-finish-onboarding" class="success-btn" disabled>Перейти к доске</button>
         </div>
     </main>
 
-    <!-- ЭКРАН ДАШБОРДА (пока пустой скелет) -->
+    <!-- ==========================================
+         VIEW 2: MAIN KANBAN BOARD
+         The primary workspace displaying tasks sorted by forums.
+         ========================================== -->
     <main id="kanban-view" class="view-container" style="display: none;">
         <header>
             <h1>Мои долги</h1>
             <button id="btn-settings" class="secondary-btn">⚙️ Настройки</button>
         </header>
-        <div class="board" id="main-board">
-            <!-- Колонки будут генерироваться тут через JS -->
-        </div>
+
+        <!-- Kanban Columns Container (Generated via JS) -->
+        <div class="board" id="main-board"></div>
     </main>
 
-    <!-- Окно редактирования задачи -->
+    <!-- ==========================================
+         MODALS & OVERLAYS
+         ========================================== -->
+    
+    <!-- Task Edit Modal -->
     <div id="task-edit-modal" class="modal-overlay" style="display: none;">
         <div class="onboarding-card" style="width: 350px; padding: 25px;">
             <h3 style="margin-bottom: 15px;">Редактировать долг</h3>
@@ -64,6 +76,7 @@
         </div>
     </div>
 
+    <!-- Scripts must be loaded at the end of the body -->
     <script src="dashboard.js"></script>
     
 </body>

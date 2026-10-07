@@ -11,10 +11,19 @@ Built completely with Vanilla JavaScript, this tracker injects a unified Kanban-
 * **Smart Injection:** Content scripts inject "Track Action" buttons directly into forum topics (e.g., mybb engine).
 * **Urgency Timers:** Automated sorting by deadline proximity and daily resets.
 
-## 🛠 Tech Stack
-* **JavaScript (ES6+)** - Core logic, DOM manipulation, Chrome Extensions API.
-* **HTML5 & CSS3** - Responsive Grid/Flexbox UI.
-* **Manifest V3** - Modern Chrome extension architecture.
+## 🏗 Architecture & Tech Stack
+
+This extension is built with a focus on performance, privacy, and zero external dependencies.
+
+*   **Platform:** Chrome Extension API (Manifest V3)
+*   **Core Logic:** Vanilla JavaScript (ES6+), no frameworks (React/Vue) used to keep the extension extremely lightweight.
+*   **Storage:** `chrome.storage.local` (Max 5MB per user). All data is strictly isolated and stored locally on the user's machine. No cloud databases or tracking are utilized.
+*   **Styling:** Pure CSS3 with Custom Properties (CSS Variables) for easy theming and scaling.
+
+### Component Structure
+1.  **Service Worker (`background.js`):** Acts as the event router. Currently handles extension icon clicks to spawn the dashboard in a new tab.
+2.  **Content Script (`content.js`):** Injected conditionally only into URLs configured by the user. Parses DOM elements (`document.title`, `window.location`) to extract topic names and URLs securely without breaking the host site's CSP (Content Security Policy).
+3.  **Dashboard Controller (`dashboard.js`):** The brain of the UI. Handles CRUD operations for forums and tasks, dynamically generates the Kanban board, and calculates real-time time differentials for deadlines.
 
 ---
 

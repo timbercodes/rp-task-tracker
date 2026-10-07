@@ -1,30 +1,42 @@
+/**
+ * RP Task Tracker - Dashboard Controller
+ * Handles UI interactions, local storage operations, and Kanban board rendering.
+ */
+
 let forums = [];
 let editingId = null;
+let currentEditingTaskId = null;
 
-// DOM элементы
+// --- DOM Elements ---
 const onboardingView = document.getElementById('onboarding-view');
 const kanbanView = document.getElementById('kanban-view');
 const btnAddForum = document.getElementById('btn-add-forum');
 const btnFinish = document.getElementById('btn-finish-onboarding');
 const forumsList = document.getElementById('added-forums-list');
-const btnSettings = document.getElementById('btn-settings'); // <-- Поймали кнопку настроек
+const btnSettings = document.getElementById('btn-settings');
+const editModal = document.getElementById('task-edit-modal');
 
-// Инпуты
+// --- Input Fields ---
 const inputName = document.getElementById('forum-name');
 const inputUrl = document.getElementById('forum-url');
 const inputChars = document.getElementById('forum-chars');
 
-// 1. Проверяем память при загрузке страницы
+/**
+ * Initializes the extension state on DOM load.
+ * Checks for existing configurations and routes to the appropriate view.
+ */
 document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.get(['savedForums'], (result) => {
         if (result.savedForums && result.savedForums.length > 0) {
             forums = result.savedForums;
-            showKanbanView(); // Вынесли переключение экранов в отдельную функцию
+            showKanbanView();
         }
     });
 });
 
-// 2. Добавление или сохранение форума
+/**
+ * Handles the creation and modification of forum configurations.
+ */
 btnAddForum.addEventListener('click', () => {
     const name = inputName.value.trim();
     const url = inputUrl.value.trim();
@@ -36,6 +48,7 @@ btnAddForum.addEventListener('click', () => {
     }
 
     if (editingId) {
+        // Update existing forum
         const forum = forums.find(f => f.id === editingId);
         forum.name = name;
         forum.url = url;
@@ -43,6 +56,7 @@ btnAddForum.addEventListener('click', () => {
         editingId = null;
         btnAddForum.textContent = 'Добавить форум';
     } else {
+        // Create new forum
         const newForum = {
             id: Date.now().toString(),
             name: name,
@@ -57,7 +71,9 @@ btnAddForum.addEventListener('click', () => {
     checkFinishButton();
 });
 
-// 3. Отрисовка списка 
+/**
+ * Renders the list of configured forums in the onboarding/settings view.
+ */
 function renderForumsList() {
     forumsList.innerHTML = '';
     
@@ -79,7 +95,9 @@ function renderForumsList() {
     });
 }
 
-// 4. Делегирование событий
+/**
+ * Event delegation for forum list actions (Edit/Delete).
+ */
 forumsList.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
@@ -103,39 +121,50 @@ forumsList.addEventListener('click', (e) => {
     }
 });
 
+/**
+ * Clears onboarding input fields.
+ */
 function clearInputs() {
     inputName.value = '';
     inputUrl.value = '';
     inputChars.value = '';
 }
 
+/**
+ * Validates if the user can proceed to the Kanban board.
+ */
 function checkFinishButton() {
     btnFinish.disabled = forums.length === 0;
 }
 
-// 5. Финализация онбординга
+/**
+ * Persists forum configurations and transitions to the Kanban view.
+ */
 btnFinish.addEventListener('click', () => {
     chrome.storage.local.set({ savedForums: forums }, () => {
         showKanbanView();
     });
 });
 
-// 6. Открытие настроек (Возврат к онбордингу)
+/**
+ * Transitions back to the settings/onboarding view.
+ */
 btnSettings.addEventListener('click', () => {
     kanbanView.style.display = 'none';
     onboardingView.style.display = 'flex';
     
-    // Отрисовываем текущие форумы, чтобы юзер мог их удалить/редактировать
+    // Current forums for update/delete
     renderForumsList();
     checkFinishButton(); 
     
-    // Меняем текст кнопки, чтобы было логичнее
     document.querySelector('.onboarding-card h1').textContent = 'Настройки форумов ⚙️';
     document.querySelector('.onboarding-card p').textContent = 'Управление твоими ролевыми проектами.';
     btnFinish.textContent = 'Сохранить и вернуться к доске';
 });
 
-// 7. Функция показа доски и генерация колонок
+/**
+ * Switches UI to Kanban mode and initializes board rendering.
+ */
 function showKanbanView() {
     onboardingView.style.display = 'none';
     kanbanView.style.display = 'flex';
@@ -144,21 +173,21 @@ function showKanbanView() {
     loadAndRenderTasks(); 
 }
 
+/**
+ * Generates Kanban columns dynamically based on saved forums.
+ */
 function renderKanbanColumns() {
     const board = document.getElementById('main-board');
-    board.innerHTML = ''; // Очищаем доску от старых данных
+    board.innerHTML = ''; 
 
     forums.forEach(forum => {
         const col = document.createElement('div');
         col.className = 'column';
         
-        // Если у форума указаны персонажи, добавляем их аккуратной подписью под названием
         let charsHtml = forum.characters 
             ? `<div style="font-size: 0.8rem; color: var(--text-muted); text-transform: none; letter-spacing: normal; margin-top: 5px;">🎭 ${forum.characters}</div>` 
             : '';
         
-        // Генерируем колонку. Обрати внимание на id="list-${forum.id}" — 
-        // именно сюда мы потом будем складывать карточки задач для конкретного форума.
         col.innerHTML = `
             <h2>
                 ${forum.name}
@@ -171,15 +200,15 @@ function renderKanbanColumns() {
     });
 }
 
-// --- ДОБАВЛЯЕМ В САМЫЙ НИЗ ФАЙЛА dashboard/dashboard.js ---
-
-// Функция вызывается внутри showKanbanView после отрисовки колонок
+/**
+ * Fetches tasks from local storage, sorts them by urgency, and renders them in corresponding columns.
+ */
 function loadAndRenderTasks() {
     chrome.storage.local.get(['rpgTasks'], (result) => {
         const tasks = result.rpgTasks || [];
         const now = new Date().getTime();
 
-        // Сортируем: дедлайны поближе — наверх, ждуны подольше — наверх
+        // Sort tasks: Urgent deadlines and long-awaited replies at the top
         tasks.sort((a, b) => {
             if (a.completed !== b.completed) return a.completed ? 1 : -1;
             
@@ -192,14 +221,13 @@ function loadAndRenderTasks() {
             return urgencyA - urgencyB;
         });
 
-        // Раскидываем карточки по колонкам
+        // Sort and distribute tasks across columns
         tasks.forEach(task => {
-            // Ищем колонку, которая принадлежит этому форуму (мы задавали id="list-{forumId}")
+            // Find the column that belongs to this forum (id="list-{forumId}")
             const column = document.getElementById(`list-${task.forumId}`);
-            if (!column) return; // Если форум удалили, карточка пока не рендерится (или можно отправлять в архив)
+            if (!column) return; // If the forum was deleted, the card won't be rendered (or you can send it to archive)
 
             const card = document.createElement('div');
-            // getStatusColor определит цвет левой рамки в зависимости от просрочки
             card.className = `task-card ${task.completed ? 'completed' : getStatusColor(task.type, task.date, now)}`;
             
             let titleHtml = task.url ? `<a href="${task.url}" target="_blank">${task.title}</a>` : task.title;
@@ -225,7 +253,13 @@ function loadAndRenderTasks() {
     });
 }
 
-// Вспомогательные функции для таймеров и цветов
+/**
+ * Determines the border color class based on task type and time differential.
+ * @param {string} type - Task type ('wait' or 'deadline')
+ * @param {string} date - ISO date string
+ * @param {number} now - Current timestamp
+ * @returns {string} CSS class for status color
+ */
 function getStatusColor(type, date, now) {
     const target = new Date(date).getTime();
     const diffDays = (now - target) / (1000 * 60 * 60 * 24);
@@ -242,6 +276,13 @@ function getStatusColor(type, date, now) {
     }
 }
 
+/**
+ * Generates the HTML for the task timer based on its type and time differential.
+ * @param {string} type - Task type ('wait' or 'deadline')
+ * @param {string} date - ISO date string
+ * @param {number} now - Current timestamp
+ * @returns {string} HTML string for the timer
+ */
 function getTimerHtml(type, date, now) {
     const target = new Date(date).getTime();
     let diff = type === 'wait' ? now - target : target - now;
@@ -255,13 +296,16 @@ function getTimerHtml(type, date, now) {
     return `${prefix} ${d}д ${h}ч`;
 }
 
+/**
+ * Deletes a task by ID after user confirmation.
+ * @param {string} id - Task identifier
+ */
 function deleteTask(id) {
     if (confirm('Точно удалить этот долг?')) {
         chrome.storage.local.get(['rpgTasks'], (result) => {
             let tasks = result.rpgTasks || [];
             tasks = tasks.filter(t => t.id !== id);
             chrome.storage.local.set({ rpgTasks: tasks }, () => {
-                // Очищаем колонки и перерисовываем заново
                 renderKanbanColumns(); 
                 loadAndRenderTasks();
             });
@@ -269,14 +313,13 @@ function deleteTask(id) {
     }
 }
 
-// --- ЛОГИКА РЕДАКТИРОВАНИЯ ЗАДАЧ ---
-// --- ЛОГИКА КЛИКОВ ПО КАРТОЧКАМ (РЕДАКТИРОВАНИЕ И УДАЛЕНИЕ) ---
-let currentEditingTaskId = null;
-const editModal = document.getElementById('task-edit-modal');
+// --- Task Editing Logic ---
 
-// Один умный слушатель на всю доску
+/**
+ * Global click listener for the Kanban board to handle edit/delete events safely.
+ */
 document.getElementById('main-board').addEventListener('click', (e) => {
-    // Ищем, был ли клик по кнопке (используем closest, чтобы иконка не перехватывала клик)
+    // Find the button that was clicked (using closest to ensure the button itself is targeted)
     const btn = e.target.closest('button');
     if (!btn) return;
 
@@ -292,6 +335,10 @@ document.getElementById('main-board').addEventListener('click', (e) => {
     }
 });
 
+/**
+ * Opens the edit modal and populates it with task data.
+ * @param {string} taskId - Target task identifier
+ */
 function openEditModal(taskId) {
     chrome.storage.local.get(['rpgTasks'], (result) => {
         const tasks = result.rpgTasks || [];
@@ -304,7 +351,7 @@ function openEditModal(taskId) {
         document.getElementById('edit-task-char').value = task.tag || '';
         document.getElementById('edit-task-type').value = task.type || 'wait';
         
-        // Бронебойная проверка даты: если даты нет, ставим "сегодня"
+        // Failsafe date parsing
         if (task.date) {
             document.getElementById('edit-task-date').value = task.date.split('T')[0];
         } else {
@@ -315,13 +362,17 @@ function openEditModal(taskId) {
     });
 }
 
-// Кнопка отмены
+/**
+ * Modal Cancel action
+ */
 document.getElementById('btn-cancel-edit').addEventListener('click', () => {
     editModal.style.display = 'none';
     currentEditingTaskId = null;
 });
 
-// Сохранение изменений
+/**
+ * Modal Save action
+ */
 document.getElementById('btn-save-task-edit').addEventListener('click', () => {
     if (!currentEditingTaskId) return;
 
