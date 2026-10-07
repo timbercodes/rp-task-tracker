@@ -1,13 +1,14 @@
 /**
  * RP Task Tracker - Content Script
  * Injected into active web pages. Responsible for parsing page data,
- * injecting the floating action button (FAB), and handling task creation directly from the forum.
+ * injecting the floating action button (FAB), and handling task creation/editing directly from the forum.
  */
 
 // 1. Fetch extension configuration and task list on page load
 chrome.storage.local.get(['savedForums', 'rpgTasks'], (result) => {
     const forums = result.savedForums || [];
     let tasks = result.rpgTasks || [];
+
     const currentHost = window.location.hostname;
 
     // Check if the current website matches any of the user's saved forums
@@ -24,11 +25,18 @@ chrome.storage.local.get(['savedForums', 'rpgTasks'], (result) => {
  * @param {Array<Object>} tasks - Current array of saved tasks
  */
 function injectUI(forum, tasks) {
+    const currentUrl = window.location.href;
+
+    // Look for existing task for this forum and URL
+    let existingTask = tasks.find(t => t.url === currentUrl && !t.completed);
+
     // --- Create Floating Button ---
     const btn = document.createElement('button');
     btn.id = 'rpt-floating-btn';
-    btn.innerHTML = '📝';
-    btn.title = 'Добавить в трекер долгов';
+
+    // Smart icon: show pencil if task exists, notepad if not
+    btn.innerHTML = existingTask ? '✏️' : '📝';
+    btn.title = existingTask ? 'Редактировать долг' : 'Добавить в трекер долгов';
     document.body.appendChild(btn);
 
     // --- Create Modal Container ---
@@ -44,27 +52,36 @@ function injectUI(forum, tasks) {
     // Get current date for default value in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0];
 
+    // If task exists — use data from memory, otherwise parse from page
+    const titleValue = existingTask ? existingTask.title : cleanTitle;
+    const charValue = existingTask ? existingTask.tag : defaultChar;
+    const typeValue = existingTask ? existingTask.type : 'wait';
+    const dateValue = existingTask ? (existingTask.date || today) : today;
+    
+    const modalHeader = existingTask ? 'Редактировать долг' : `Новый долг: ${forum.name}`;
+    const btnText = existingTask ? 'Сохранить изменения' : 'Сохранить';
+
     // Build Modal HTML
     modal.innerHTML = `
         <span class="rpt-close" id="rpt-close-btn">&times;</span>
-        <h4 style="margin: 0; color: #64ffda; font-size: 16px;">Новый долг: ${forum.name}</h4>
+        <h4 id="rpt-modal-header" style="margin: 0; color: #64ffda; font-size: 16px; padding-bottom: 10px;">${modalHeader}</h4>${existingTask ? `<div id="rpt-add-new-instead" style="font-size: 11px; color: #888; cursor: pointer; text-decoration: underline; margin-bottom: 10px;">+ Или добавить как новый долг?</div>` : ''}
         
         <label style="font-size: 12px; color: #888;">Название темы</label>
-        <input type="text" id="rpt-title" value="${cleanTitle}">
+        <input type="text" id="rpt-title" value="${titleValue}">
         
         <label style="font-size: 12px; color: #888;">Персонаж</label>
-        <input type="text" id="rpt-char" value="${defaultChar}" placeholder="Чей пост?">
+        <input type="text" id="rpt-char" value="${charValue}">
         
         <label style="font-size: 12px; color: #888;">Тип задачи</label>
         <select id="rpt-type">
-            <option value="wait">Жду ответа (Счетчик вверх)</option>
-            <option value="deadline">Дедлайн (Таймер вниз)</option>
+            <option value="wait" ${typeValue === 'wait' ? 'selected' : ''}>Жду ответа</option>
+            <option value="deadline" ${typeValue === 'deadline' ? 'selected' : ''}>Дедлайн</option>
         </select>
         
-        <label style="font-size: 12px; color: #888;">Дата (отсчета или дедлайна)</label>
-        <input type="date" id="rpt-date" value="${today}">
+        <label style="font-size: 12px; color: #888;">Дата</label>
+        <input type="date" id="rpt-date" value="${dateValue}">
         
-        <button id="rpt-save-btn">Сохранить</button>
+        <button id="rpt-save-btn">${btnText}</button>
     `;
     document.body.appendChild(modal);
 
@@ -76,37 +93,65 @@ function injectUI(forum, tasks) {
     // Close modal via 'X' button
     document.getElementById('rpt-close-btn').addEventListener('click', () => modal.classList.remove('rpt-active'));
 
+    // Handle "Add as new task" option if editing an existing task
+    if (existingTask) {
+        document.getElementById('rpt-add-new-instead').addEventListener('click', (e) => {
+            existingTask = null; 
+            
+            document.getElementById('rpt-modal-header').textContent = `Новый долг: ${forum.name}`;
+            document.getElementById('rpt-save-btn').textContent = 'Сохранить';
+            e.target.style.display = 'none';
+            
+            document.getElementById('rpt-title').value = cleanTitle;
+            document.getElementById('rpt-char').value = defaultChar;
+        });
+    }
+    // ==========================================    
+
     // Handle task creation and storage
     document.getElementById('rpt-save-btn').addEventListener('click', () => {
         const title = document.getElementById('rpt-title').value;
         const char = document.getElementById('rpt-char').value;
         const type = document.getElementById('rpt-type').value;
         const date = document.getElementById('rpt-date').value;
-        const url = window.location.href; // Capture exact page URL
 
         if (!date) return alert('Укажи дату!');
 
-        const newTask = {
-            id: Date.now().toString(),
-            forumId: forum.id,
-            title: title,
-            url: url,
-            tag: char,
-            type: type,
-            date: date,
-            completed: false,
-            archived: false
-        };
+        if (existingTask) {
+            // Update existing task
+            existingTask.title = title;
+            existingTask.tag = char;
+            existingTask.type = type;
+            existingTask.date = date;
+        } else {
+            // Create new task object
+            const newTask = {
+                id: Date.now().toString(),
+                forumId: forum.id,
+                title: title,
+                url: currentUrl,
+                tag: char,
+                type: type,
+                date: date,
+                completed: false,
+                archived: false
+            };
+            tasks.push(newTask);
+            existingTask = newTask; // Update reference for UI feedback
+        }
 
-        tasks.push(newTask);
-        
         // Persist data and provide visual feedback
         chrome.storage.local.set({ rpgTasks: tasks }, () => {
             btn.innerHTML = '✅';
             modal.classList.remove('rpt-active');
 
             // Reset button icon after 2 seconds
-            setTimeout(() => btn.innerHTML = '📝', 2000);
+            setTimeout(() => {
+                btn.innerHTML = '✏️';
+                btn.title = 'Редактировать этот долг';
+                document.getElementById('rpt-modal-header').textContent = 'Редактировать долг';
+                document.getElementById('rpt-save-btn').textContent = 'Сохранить изменения';
+            }, 2000);
         });
     });
 }
