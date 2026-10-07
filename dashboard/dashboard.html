@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RP Task Tracker</title>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+    <!-- ЭКРАН ОНБОРДИНГА -->
+    <main id="onboarding-view" class="view-container">
+        <div class="onboarding-card">
+            <h1>Добро пожаловать в трекер! 🎲</h1>
+            <p>Давай добавим твои форумы, чтобы настроить доску.</p>
+
+            <div class="form-group">
+                <input type="text" id="forum-name" placeholder="Название форума (например, Example RPG)">
+                
+                <input type="text" id="forum-url" placeholder="Ссылка (например, example-rpg.rusff.me)">
+                <small class="hint">Нужно, чтобы расширение понимало, где показывать кнопку добавления долга.</small>
+                
+                <input type="text" id="forum-chars" placeholder="Твои персонажи (через запятую, например: John Doe, Jane)">
+                
+                <button id="btn-add-forum" class="primary-btn">Добавить форум</button>
+            </div>
+
+            <!-- Сюда будут падать добавленные форумы -->
+            <div id="added-forums-list" class="forums-list"></div>
+
+            <button id="btn-finish-onboarding" class="success-btn" disabled>Перейти к доске</button>
+        </div>
+    </main>
+
+    <!-- ЭКРАН ДАШБОРДА (пока пустой скелет) -->
+    <main id="kanban-view" class="view-container" style="display: none;">
+        <header>
+            <h1>Мои долги</h1>
+            <button id="btn-settings" class="secondary-btn">⚙️ Настройки</button>
+        </header>
+        <div class="board" id="main-board">
+            <!-- Колонки будут генерироваться тут через JS -->
+        </div>
+    </main>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

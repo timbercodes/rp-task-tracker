@@ -1,0 +1,44 @@
+:root {
+    --bg-color: #121212;
+    --surface: #1e1e1e;
+    --surface-hover: #2c2c2c;
+    --text-main: #e0e0e0;
+    --text-muted: #888;
+    --accent: #64ffda;
+    --red: #ff5252;
+    --green: #69f0ae;
+    --border: #333;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-main); line-height: 1.5; }
+
+.view-container { min-height: 100vh; display: flex; flex-direction: column; }
+
+/* --- Стили онбординга --- */
+#onboarding-view { justify-content: center; align-items: center; }
+.onboarding-card { background-color: var(--surface); padding: 40px; border-radius: 12px; width: 500px; border: 1px solid var(--border); }
+.onboarding-card h1 { margin-bottom: 10px; font-size: 1.8rem; }
+.onboarding-card p { color: var(--text-muted); margin-bottom: 25px; }
+
+.form-group { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; }
+input { background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border); padding: 12px; border-radius: 6px; font-size: 1rem; font-family: inherit; }
+input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.hint { font-size: 0.8rem; color: var(--text-muted); margin-top: -10px; }
+
+button { border: none; padding: 12px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1rem; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button:hover:not(:disabled) { opacity: 0.8; }
+.primary-btn { background-color: var(--accent); color: #000; }
+.secondary-btn { background-color: transparent; color: var(--text-main); border: 1px solid var(--border); }
+.success-btn { background-color: var(--green); color: #000; width: 100%; margin-top: 20px; }
+
+.forums-list { display: flex; flex-direction: column; gap: 10px; }
+.forum-item { display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-color); padding: 12px; border-radius: 6px; border-left: 4px solid var(--accent); }
+.forum-info strong { display: block; }
+.forum-info span { font-size: 0.85rem; color: var(--text-muted); }
+.forum-actions button { background: none; border: none; font-size: 1.2rem; padding: 0 5px; cursor: pointer; }
+
+/* --- Стили дашборда (из старого кода) --- */
+#kanban-view header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background-color: var(--surface); border-bottom: 1px solid var(--border); }
+.board { display: flex; gap: 20px; padding: 30px 40px; overflow-x: auto; }
