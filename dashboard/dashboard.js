@@ -35,6 +35,18 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
+ * Real-time Sync: Listens for storage changes from other tabs (or the floating button)
+ * and automatically re-renders the dashboard without needing to refresh the page.
+ */
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'local' && changes.rpgTasks) {
+        // Перерисовываем колонки и задачи мгновенно
+        renderKanbanColumns();
+        loadAndRenderTasks();
+    }
+});
+
+/**
  * Handles the creation and modification of forum configurations.
  */
 btnAddForum.addEventListener('click', () => {
@@ -188,9 +200,11 @@ function renderKanbanColumns() {
             ? `<div style="font-size: 0.8rem; color: var(--text-muted); text-transform: none; letter-spacing: normal; margin-top: 5px;">🎭 ${forum.characters}</div>` 
             : '';
         
+        const forumLink = forum.url.startsWith('http') ? forum.url : `https://${forum.url}`;
+        
         col.innerHTML = `
             <h2>
-                ${forum.name}
+                <a href="${forumLink}" target="_blank" style="color: inherit; text-decoration: none;" title="Перейти на форум">${forum.name}</a>
                 ${charsHtml}
             </h2>
             <div class="task-list" id="list-${forum.id}"></div>
@@ -242,6 +256,7 @@ function loadAndRenderTasks() {
                         <div class="task-timer" style="color: ${task.completed ? 'inherit' : 'var(--text-main)'}">${timerHtml}</div>
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 15px;">
+                        <button class="btn-complete-task" data-task-id="${task.id}" style="background: none; border: none; cursor: pointer; font-size: 1.1rem;" title="Выполнено/В архив">✅</button>
                         <button class="btn-edit-task" data-task-id="${task.id}" style="background: none; border: none; cursor: pointer; font-size: 1.1rem;" title="Редактировать">✏️</button>
                         <button class="btn-delete-task" data-task-id="${task.id}" style="background: none; border: none; cursor: pointer; font-size: 1.1rem;" title="Удалить">🗑️</button>
                     </div>
@@ -305,18 +320,34 @@ function deleteTask(id) {
         chrome.storage.local.get(['rpgTasks'], (result) => {
             let tasks = result.rpgTasks || [];
             tasks = tasks.filter(t => t.id !== id);
-            chrome.storage.local.set({ rpgTasks: tasks }, () => {
-                renderKanbanColumns(); 
-                loadAndRenderTasks();
-            });
+            chrome.storage.local.set({ rpgTasks: tasks });
         });
     }
+}
+
+/**
+ * Toggles the 'completed' status of a task.
+ * Thanks to the storage listener, changing this will automatically trigger a re-render.
+ * @param {string} id - Task identifier
+ */
+function toggleTaskCompletion(id) {
+    chrome.storage.local.get(['rpgTasks'], (result) => {
+        let tasks = result.rpgTasks || [];
+        const task = tasks.find(t => t.id === id);
+        
+        if (task) {
+            task.completed = !task.completed;
+            
+            // Saving to memory. UI will update automatically due to chrome.storage.onChanged
+            chrome.storage.local.set({ rpgTasks: tasks }); 
+        }
+    });
 }
 
 // --- Task Editing Logic ---
 
 /**
- * Global click listener for the Kanban board to handle edit/delete events safely.
+ * Global click listener for the Kanban board to handle complete/edit/delete events safely.
  */
 document.getElementById('main-board').addEventListener('click', (e) => {
     // Find the button that was clicked (using closest to ensure the button itself is targeted)
@@ -325,6 +356,10 @@ document.getElementById('main-board').addEventListener('click', (e) => {
 
     const taskId = btn.getAttribute('data-task-id');
     if (!taskId) return;
+
+    if (btn.classList.contains('btn-complete-task')) {
+        toggleTaskCompletion(taskId);
+    }
 
     if (btn.classList.contains('btn-delete-task')) {
         deleteTask(taskId);
@@ -389,8 +424,6 @@ document.getElementById('btn-save-task-edit').addEventListener('click', () => {
             chrome.storage.local.set({ rpgTasks: tasks }, () => {
                 editModal.style.display = 'none';
                 currentEditingTaskId = null;
-                renderKanbanColumns(); 
-                loadAndRenderTasks();
             });
         }
     });
