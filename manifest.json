@@ -9,6 +9,13 @@
   "background": {
     "service_worker": "scripts/background.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["scripts/content.js"],
+      "css": ["scripts/content.css"]
+    }
+  ],
   "permissions": [
     "storage"
   ]

@@ -42,3 +42,20 @@ button:hover:not(:disabled) { opacity: 0.8; }
 /* --- Стили дашборда (из старого кода) --- */
 #kanban-view header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background-color: var(--surface); border-bottom: 1px solid var(--border); }
 .board { display: flex; gap: 20px; padding: 30px 40px; overflow-x: auto; }
+.column { background-color: var(--surface); border-radius: 12px; padding: 20px; min-width: 300px; min-height: 70vh; flex: 1; border: 1px solid var(--border); }
+.column h2 { text-align: center; font-size: 1.2rem; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+
+.task-list { display: flex; flex-direction: column; gap: 15px; margin-top: 15px; }
+.task-card { background-color: var(--bg-color); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 8px; border-left: 4px solid var(--border); }
+.task-card.status-red { border-left-color: var(--red); }
+.task-card.status-yellow { border-left-color: var(--yellow); }
+.task-card.status-green { border-left-color: var(--green); }
+.task-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.task-title { font-weight: 600; font-size: 1.1rem; }
+.task-title a { color: var(--text-main); text-decoration: none; }
+.task-title a:hover { text-decoration: underline; color: var(--accent); }
+.task-meta { font-size: 0.85rem; color: var(--text-muted); }
+.tag { background-color: #333; padding: 2px 8px; border-radius: 4px; color: #ccc; }
+.task-timer { font-size: 0.9rem; font-weight: 600; margin-top: 5px; }
+
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; }

@@ -43,6 +43,28 @@
         </div>
     </main>
 
+    <!-- Окно редактирования задачи -->
+    <div id="task-edit-modal" class="modal-overlay" style="display: none;">
+        <div class="onboarding-card" style="width: 350px; padding: 25px;">
+            <h3 style="margin-bottom: 15px;">Редактировать долг</h3>
+            <div class="form-group" style="gap: 10px;">
+                <input type="text" id="edit-task-title" placeholder="Название темы">
+                <input type="text" id="edit-task-char" placeholder="Персонаж">
+                <select id="edit-task-type" style="padding: 10px; background: var(--bg-color); color: white; border: 1px solid var(--border); border-radius: 6px;">
+                    <option value="wait">Жду ответа</option>
+                    <option value="deadline">Дедлайн</option>
+                </select>
+                <input type="date" id="edit-task-date">
+                
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button id="btn-cancel-edit" class="secondary-btn" style="flex: 1;">Отмена</button>
+                    <button id="btn-save-task-edit" class="primary-btn" style="flex: 1;">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="dashboard.js"></script>
+    
 </body>
 </html>
