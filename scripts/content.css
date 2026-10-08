@@ -1,26 +1,40 @@
-/* Уникальный префикс rpt- (RolePlay Tracker) защищает от конфликтов с CSS форума */
+/**
+ * RP Task Tracker - Content Script Styles
+ * Note: Unique 'rpt-' prefix is used for all IDs and Classes to strictly prevent 
+ * CSS collisions with the host forum's native stylesheets.
+ */
+
+/* ==========================================================================
+   1. Floating Action Button (FAB)
+   ========================================================================== */
+
 #rpt-floating-btn {
     position: fixed;
     bottom: 30px;
     right: 30px;
     width: 50px;
     height: 50px;
-    background-color: #64ffda;
     border-radius: 50%;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    cursor: pointer;
-    z-index: 999999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 24px;
-    transition: 0.2s transform;
+    background-color: #475569; /* Muted Indigo */
+    color: #ffffff;
     border: none;
-    color: #000;
+    cursor: pointer;
+    z-index: 999999; /* Max z-index to stay above forum headers/footers */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
+
 #rpt-floating-btn:hover {
-    transform: scale(1.1);
+    background-color: #334155; /* Darker Indigo on hover */
+    transform: scale(1.05);
 }
+
+/* ==========================================================================
+   2. Modal Container
+   ========================================================================== */
 
 #rpt-modal {
     position: fixed;
@@ -42,16 +56,43 @@
 #rpt-modal.rpt-active {
     display: flex;
 }
-#rpt-modal input, #rpt-modal select {
+
+/* ==========================================================================
+   3. Modal Inner Elements (Inputs, Selects, Buttons)
+   ========================================================================== */
+
+/* Close icon */
+#rpt-modal .rpt-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    cursor: pointer;
+    font-size: 18px;
+    color: #888888;
+    transition: color 0.2s ease;
+}
+
+#rpt-modal .rpt-close:hover {
+    color: #ffffff;
+}
+
+/* Form inputs */
+#rpt-modal input, 
+#rpt-modal select {
     width: 100%;
+    box-sizing: border-box;
     padding: 8px;
     background: #121212;
-    border: 1px solid #333;
-    color: #fff;
+    color: #ffffff;
+    border: 1px solid #333333;
     border-radius: 4px;
-    box-sizing: border-box;
+    font-family: inherit; /* Override forum typography */
+    font-size: 13px;
+    appearance: auto; /* Attempt to restore native browser UI */
 }
-#rpt-modal button {
+
+/* Save button */
+#rpt-modal button#rpt-save-btn {
     background-color: #64ffda;
     color: #000;
     border: none;
@@ -59,12 +100,13 @@
     border-radius: 4px;
     font-weight: bold;
     cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 5px;
 }
-#rpt-modal .rpt-close {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    cursor: pointer;
-    font-size: 18px;
-    color: #888;
+#rpt-modal button#rpt-save-btn:hover {
+    background-color: #52e0c4;
+}
+
+#rpt-date {
+    color-scheme: dark;
 }

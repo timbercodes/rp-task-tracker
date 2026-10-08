@@ -4,6 +4,12 @@
  * injecting the floating action button (FAB), and handling task creation/editing directly from the forum.
  */
 
+// --- SVG Icons ---
+// --- SVG Icons ---
+const ICON_EDIT_FAB = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+const ICON_ADD_FAB = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+const ICON_CHECK_FAB = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
 // 1. Fetch extension configuration and task list on page load
 chrome.storage.local.get(['savedForums', 'rpgTasks'], (result) => {
     const forums = result.savedForums || [];
@@ -34,8 +40,8 @@ function injectUI(forum, tasks) {
     const btn = document.createElement('button');
     btn.id = 'rpt-floating-btn';
 
-    // Smart icon: show pencil if task exists, notepad if not
-    btn.innerHTML = existingTask ? '✏️' : '📝';
+    // Smart icon: Set initial smart icon based on task existence
+    btn.innerHTML = existingTask ? ICON_EDIT_FAB : ICON_ADD_FAB;
     btn.title = existingTask ? 'Редактировать долг' : 'Добавить в трекер долгов';
     document.body.appendChild(btn);
 
@@ -142,12 +148,12 @@ function injectUI(forum, tasks) {
 
         // Persist data and provide visual feedback
         chrome.storage.local.set({ rpgTasks: tasks }, () => {
-            btn.innerHTML = '✅';
+            btn.innerHTML = ICON_CHECK_FAB; // Show checkmark icon
             modal.classList.remove('rpt-active');
 
             // Reset button icon after 2 seconds
             setTimeout(() => {
-                btn.innerHTML = '✏️';
+                btn.innerHTML = ICON_EDIT_FAB; // Show edit icon
                 btn.title = 'Редактировать этот долг';
                 document.getElementById('rpt-modal-header').textContent = 'Редактировать долг';
                 document.getElementById('rpt-save-btn').textContent = 'Сохранить изменения';

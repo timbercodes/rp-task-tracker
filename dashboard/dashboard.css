@@ -76,3 +76,49 @@ button:hover:not(:disabled) { opacity: 0.8; }
 .task-card.completed .btn-edit-task {
     display: none; 
 }
+
+/* --- Кнопки действий на карточке (SVG) --- */
+.task-actions {
+    display: flex; 
+    gap: 10px;
+}
+.task-actions button {
+    background: none; 
+    border: none; 
+    cursor: pointer; 
+    color: var(--text-muted); /* Делаем их серыми по умолчанию */
+    padding: 0;
+    transition: color 0.2s;
+}
+.task-actions button:hover {
+    color: var(--text-color); /* При наведении становятся яркими */
+}
+
+/* --- Инверсия иконки календаря для темной темы (Windows/Chrome) --- */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1); /* Делаем черную иконку белой */
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1; /* Делаем ярче при наведении */
+}
+
+/* --- Forum list action buttons --- */
+.forum-actions {
+    display: flex;
+    gap: 10px;
+}
+.forum-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted); /* Иконки по умолчанию серые */
+    padding: 0;
+    transition: color 0.2s;
+}
+.forum-actions button:hover {
+    color: var(--text-color); /* Подсветка при наведении */
+}
