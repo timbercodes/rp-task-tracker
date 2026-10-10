@@ -130,7 +130,21 @@ forumsList.addEventListener('click', (e) => {
     const id = btn.getAttribute('data-id');
 
     if (btn.classList.contains('btn-delete')) {
+        // Remove forum from array
         forums = forums.filter(f => f.id !== id);
+        
+        // CASCADING DELETE: Remove all tasks associated with this forum ID
+        chrome.storage.local.get(['rpgTasks'], (result) => {
+            let tasks = result.rpgTasks || [];
+            const originalLength = tasks.length;
+            tasks = tasks.filter(t => t.forumId !== id);
+            
+            // Save cleaned tasks back to memory
+            if (tasks.length !== originalLength) {
+                chrome.storage.local.set({ rpgTasks: tasks });
+            }
+        });
+        
         renderForumsList();
         checkFinishButton();
     }

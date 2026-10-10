@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "RP Task Tracker",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Легкий трекер долгов и дедлайнов для форумных ролевых игр.",
   "action": {
     "default_title": "Открыть дашборд"

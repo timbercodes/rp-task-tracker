@@ -123,41 +123,50 @@ function injectUI(forum, tasks) {
 
         if (!date) return alert('Укажи дату!');
 
-        if (existingTask) {
-            // Update existing task
-            existingTask.title = title;
-            existingTask.tag = char;
-            existingTask.type = type;
-            existingTask.date = date;
-        } else {
-            // Create new task object
-            const newTask = {
-                id: Date.now().toString(),
-                forumId: forum.id,
-                title: title,
-                url: currentUrl,
-                tag: char,
-                type: type,
-                date: date,
-                completed: false,
-                archived: false
-            };
-            tasks.push(newTask);
-            existingTask = newTask; // Update reference for UI feedback
-        }
+        // FETCH LATEST DATA RIGHT BEFORE SAVING TO PREVENT RACE CONDITIONS
+        // This ensures concurrent tabs don't overwrite each other's saves
+        chrome.storage.local.get(['rpgTasks'], (result) => {
+            let latestTasks = result.rpgTasks || [];
 
-        // Persist data and provide visual feedback
-        chrome.storage.local.set({ rpgTasks: tasks }, () => {
-            btn.innerHTML = ICON_CHECK_FAB; // Show checkmark icon
-            modal.classList.remove('rpt-active');
+            if (existingTask) {
+                // Find and update existing task in the fresh array
+                const taskIndex = latestTasks.findIndex(t => t.id === existingTask.id);
+                if (taskIndex > -1) {
+                    latestTasks[taskIndex].title = title;
+                    latestTasks[taskIndex].tag = char;
+                    latestTasks[taskIndex].type = type;
+                    latestTasks[taskIndex].date = date;
+                }
+            } else {
+                // Create new task object
+                const newTask = {
+                    id: Date.now().toString(),
+                    forumId: forum.id,
+                    title: title,
+                    url: currentUrl,
+                    tag: char,
+                    type: type,
+                    date: date,
+                    completed: false,
+                    archived: false
+                };
+                latestTasks.push(newTask);
+                existingTask = newTask; // Update reference for UI feedback
+            }
 
-            // Reset button icon after 2 seconds
-            setTimeout(() => {
-                btn.innerHTML = ICON_EDIT_FAB; // Show edit icon
-                btn.title = 'Редактировать этот долг';
-                document.getElementById('rpt-modal-header').textContent = 'Редактировать долг';
-                document.getElementById('rpt-save-btn').textContent = 'Сохранить изменения';
-            }, 2000);
+            // Persist data and provide visual feedback
+            chrome.storage.local.set({ rpgTasks: latestTasks }, () => {
+                btn.innerHTML = ICON_CHECK_FAB; // Show checkmark icon
+                modal.classList.remove('rpt-active');
+
+                // Reset button icon after 2 seconds
+                setTimeout(() => {
+                    btn.innerHTML = ICON_EDIT_FAB; // Show edit icon
+                    btn.title = 'Редактировать этот долг';
+                    document.getElementById('rpt-modal-header').textContent = 'Редактировать долг';
+                    document.getElementById('rpt-save-btn').textContent = 'Сохранить изменения';
+                }, 2000);
+            });
         });
     });
 }
