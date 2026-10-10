@@ -14,6 +14,7 @@ const btnAddForum = document.getElementById('btn-add-forum');
 const btnFinish = document.getElementById('btn-finish-onboarding');
 const forumsList = document.getElementById('added-forums-list');
 const btnSettings = document.getElementById('btn-settings');
+const btnCancelSettings = document.getElementById('btn-cancel-settings');
 const editModal = document.getElementById('task-edit-modal');
 
 // --- Input Fields ---
@@ -155,18 +156,36 @@ function clearInputs() {
 }
 
 /**
- * Validates if the user can proceed to the Kanban board.
+ * Validates if the user can proceed.
+ * In v1.0.1, we allow saving an empty list to support deleting all forums.
  */
 function checkFinishButton() {
-    btnFinish.disabled = forums.length === 0;
+    // If we are in "Settings" mode (Cancel button is visible), we CAN save an empty list.
+    // If it's the very first onboarding, we force at least one forum.
+    if (btnCancelSettings.style.display === 'block') {
+        btnFinish.disabled = false; 
+    } else {
+        btnFinish.disabled = forums.length === 0;
+    }
 }
 
 /**
- * Persists forum configurations and transitions to the Kanban view.
+ * Persists forum configurations and determines the next view.
  */
 btnFinish.addEventListener('click', () => {
     chrome.storage.local.set({ savedForums: forums }, () => {
-        showKanbanView();
+        // If the user deleted all forums, lock them in the onboarding view
+        if (forums.length === 0) {
+            btnCancelSettings.style.display = 'none';
+            document.querySelector('.onboarding-card h1').textContent = 'Добро пожаловать в трекер! 🎲';
+            document.querySelector('.onboarding-card p').textContent = 'Давай добавим твои форумы, чтобы настроить доску.';
+            btnFinish.textContent = 'Перейти к доске';
+            checkFinishButton(); // Will disable the button since length is 0
+        } else {
+            // Normal flow: proceed to board
+            showKanbanView();
+            btnCancelSettings.style.display = 'none';
+        }
     });
 });
 
@@ -176,6 +195,9 @@ btnFinish.addEventListener('click', () => {
 btnSettings.addEventListener('click', () => {
     kanbanView.style.display = 'none';
     onboardingView.style.display = 'flex';
+
+    // Show Cancel button only when accessing from the dashboard
+    btnCancelSettings.style.display = 'block';
     
     // Current forums for update/delete
     renderForumsList();
@@ -440,5 +462,19 @@ document.getElementById('btn-save-task-edit').addEventListener('click', () => {
                 currentEditingTaskId = null;
             });
         }
+    });
+});
+
+/**
+ * Cancels settings edits and returns to the Kanban board without saving.
+ */
+btnCancelSettings.addEventListener('click', () => {
+    // Re-fetch original data from memory to discard unsaved changes
+    chrome.storage.local.get(['savedForums'], (result) => {
+        forums = result.savedForums || [];
+        showKanbanView();
+        
+        // Hide cancel button for next potential fresh onboarding
+        btnCancelSettings.style.display = 'none'; 
     });
 });

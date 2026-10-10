@@ -45,7 +45,6 @@ button:hover:not(:disabled) { opacity: 0.8; }
 .column { background-color: var(--surface); border-radius: 12px; padding: 20px; min-width: 300px; min-height: 70vh; flex: 1; border: 1px solid var(--border); }
 .column h2 { text-align: center; font-size: 1.2rem; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
 
-.task-list { display: flex; flex-direction: column; gap: 15px; margin-top: 15px; }
 .task-card { background-color: var(--bg-color); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 8px; border-left: 4px solid var(--border); }
 .task-card.status-red { border-left-color: var(--red); }
 .task-card.status-yellow { border-left-color: var(--yellow); }
@@ -121,4 +120,36 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 .forum-actions button:hover {
     color: var(--text-color); /* Подсветка при наведении */
+}
+
+/* ==========================================
+   SCROLLBAR FIX (v1.0.1)
+   Applies scrolling to individual forum columns
+   ========================================== */
+
+.task-list {
+    display: flex; 
+    flex-direction: column; 
+    gap: 15px; 
+    margin-top: 15px;
+    
+    /* Enable vertical scrolling within the column */
+    max-height: calc(100vh - 300px); /* Adjusted for column headers and padding */
+    overflow-y: auto;
+    padding-right: 8px; /* Space for the scrollbar */
+}
+
+/* Custom WebKit Scrollbar Styling */
+.task-list::-webkit-scrollbar { 
+    width: 6px; 
+}
+.task-list::-webkit-scrollbar-track { 
+    background: transparent; 
+}
+.task-list::-webkit-scrollbar-thumb { 
+    background: var(--border); /* Matches your dark theme border */
+    border-radius: 4px; 
+}
+.task-list::-webkit-scrollbar-thumb:hover { 
+    background: var(--text-muted); /* Highlights on hover */
 }
