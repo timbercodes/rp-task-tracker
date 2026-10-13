@@ -31,7 +31,7 @@ function injectUI(forum, tasks) {
     const currentUrl = window.location.href;
 
     // Look for existing task for this forum and URL
-    let existingTask = tasks.find(t => t.url === currentUrl && !t.completed);
+    let existingTask = tasks.find(t => t.url === currentUrl && !t.completed && !t.archived);
 
     // --- Create Floating Button ---
     const btn = document.createElement('button');
@@ -59,7 +59,7 @@ function injectUI(forum, tasks) {
     const titleValue = existingTask ? existingTask.title : cleanTitle;
     const charValue = existingTask ? existingTask.tag : defaultChar;
     const typeValue = existingTask ? existingTask.type : 'wait';
-    const dateValue = existingTask ? (existingTask.date || today) : today;
+    const dateValue = (existingTask && existingTask.date) ? existingTask.date.split('T')[0] : today;
     
     // SANITIZE DATA BEFORE INJECTING INTO HTML (Fixing the XSS vulnerability)
     const safeTitleValue = escapeHTML(titleValue);
@@ -128,14 +128,18 @@ function injectUI(forum, tasks) {
         if (!rawDate) return alert('Пожалуйста, выбери дату!');
 
         // SMART TIME INJECTION:
+        const oldDateObj = existingTask && existingTask.date ? existingTask.date : '';
+        const oldDay = oldDateObj.split('T')[0];
+        const oldTime = oldDateObj.split('T')[1];
+
         let finalDateStr = rawDate;
         if (type === 'deadline') {
-            // Deadline till 23:59:59 on that day
             finalDateStr = `${rawDate}T23:59:59`;
         } else if (type === 'turn' || type === 'wait') {
-            // Debt/Waiting tasks start counting from the current time (hours, minutes, seconds)
-            const nowTimeStr = new Date().toTimeString().split(' ')[0]; // Extract "HH:MM:SS"
-            finalDateStr = `${rawDate}T${nowTimeStr}`;
+            const timeToUse = (existingTask && rawDate === oldDay && oldTime && oldTime !== '23:59:59')
+                ? oldTime
+                : new Date().toTimeString().split(' ')[0];
+            finalDateStr = `${rawDate}T${timeToUse}`;
         }
         // Daily tasks remain as is (just YYYY-MM-DD), their time is not important
 

@@ -58,13 +58,15 @@ function loadArchive() {
                 const start = new Date(task.date).getTime();
                 const end = new Date(task.completionDate).getTime();
                 let diff = end - start;
-                if (diff > 0) {
-                    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-                    const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    
-                    const prefix = task.type === 'turn' ? 'Пост написан за:' : 'Ответа ждали:';
-                    timeTakenHtml = `<div class="time-taken">${prefix} ${d}д ${h}ч</div>`;
-                }
+                
+                // Если разница меньше нуля (из-за миллисекунд), ставим 0, но всегда показываем строку
+                if (diff < 0) diff = 0;
+
+                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                
+                const prefix = task.type === 'turn' ? 'Пост написан за:' : 'Ответа ждали:';
+                timeTakenHtml = `<div class="time-taken">${prefix} ${d}д ${h}ч</div>`;
             } else if (task.type === 'deadline') {
                 timeTakenHtml = `<div style="color: var(--text-muted);">Дедлайн закрыт</div>`;
             }

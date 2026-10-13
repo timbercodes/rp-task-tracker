@@ -344,6 +344,15 @@ function loadAndRenderTasks() {
             let timerHtml = getTimerHtml(task.type, task.date, now, task);
             let tagHtml = task.tag ? `<span class="tag">${safeTag}</span>` : '';
 
+            // --- SMART PING-PONG BUTTON ---
+            let pingPongBtnHtml = '';
+            if (task.type === 'turn' || task.type === 'wait') {
+                const ppTitle = task.type === 'turn' 
+                    ? 'Пост сдан! Передать ход (в Ожидание + запись в Архив)' 
+                    : 'Ответ получен! Взять в работу (Мой долг)';
+                pingPongBtnHtml = `<button class="btn-pingpong-task" data-task-id="${task.id}" title="${ppTitle}">${ICON_PINGPONG}</button>`;
+            }
+
             card.innerHTML = `
                 <div class="task-header">
                     <div>
@@ -353,7 +362,8 @@ function loadAndRenderTasks() {
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 15px;">
                         <div class="task-actions">
-                            <button class="btn-complete-task" data-task-id="${task.id}" title="Выполнено/В архив">${ICON_CHECK}</button>
+                            ${pingPongBtnHtml}
+                            <button class="btn-complete-task" data-task-id="${task.id}" title="Выполнено/Завершить эпизод">${ICON_CHECK}</button>
                             <button class="btn-edit-task" data-task-id="${task.id}" title="Редактировать">${ICON_EDIT}</button>
                             <button class="btn-delete-task" data-task-id="${task.id}" title="Удалить">${ICON_TRASH}</button>
                         </div>
@@ -463,8 +473,9 @@ function deleteTask(id) {
 
 /**
  * Handles the completion of a task.
- * Dailies are just crossed out (completed: true) until midnight reset.
- * Other tasks are sent to the archive.
+ * - 'daily': toggled (completed: true/false) on the board until midnight reset.
+ * - 'wait': silently removed from the board (previous posts are already in Archive).
+ * - 'turn' / 'deadline': sent to the Archive with a frozen completion timestamp.
  * @param {string} id - Task identifier
  */
 function handleCompleteAction(id) {
@@ -478,12 +489,8 @@ function handleCompleteAction(id) {
             if (task.type === 'daily') {
                 task.completed = !task.completed;
             } else if (task.type === 'wait') {
-                // Wait: Delete from memory. We don't need statistics for waits.
-                if (confirm('Ожидание ответа завершено. Удалить эту задачу с доски? (В архив она не попадет)')) {
-                    tasks.splice(taskIndex, 1);
-                } else {
-                    return; // If the user clicked "Cancel" - do nothing
-                }
+                // Silently remove completed wait task from active board without popup
+                tasks.splice(taskIndex, 1);
             } else {
                 task.archived = true;
                 task.completed = true;
@@ -491,7 +498,54 @@ function handleCompleteAction(id) {
                 task.completionDate = new Date().toISOString();
             }
             
-            // Saving to memory. UI will update automatically due to chrome.storage.onChanged listener.
+            chrome.storage.local.set({ rpgTasks: tasks });
+        }
+    });
+}
+
+/**
+ * Handles the Smart Ping-Pong transition between 'turn' and 'wait'.
+ * - 'turn' -> 'wait': Saves a completed copy to the Archive, flips active card to 'wait', and resets timer.
+ * - 'wait' -> 'turn': Flips active card to 'turn' and resets timer (no archive entry).
+ * @param {string} id - Task identifier
+ */
+function handlePingPongAction(id) {
+    chrome.storage.local.get(['rpgTasks'], (result) => {
+        let tasks = result.rpgTasks || [];
+        const taskIndex = tasks.findIndex(t => t.id === id);
+        
+        if (taskIndex > -1) {
+            const task = tasks[taskIndex];
+            const nowObj = new Date();
+            
+            // Build local YYYY-MM-DDTHH:MM:SS string for accurate timer reset
+            const yyyy = nowObj.getFullYear();
+            const mm = String(nowObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(nowObj.getDate()).padStart(2, '0');
+            const timeStr = nowObj.toTimeString().split(' ')[0];
+            const freshDateStr = `${yyyy}-${mm}-${dd}T${timeStr}`;
+
+            if (task.type === 'turn') {
+                // 1. Create an archived snapshot of the written post for history & stats
+                const archivedCopy = {
+                    ...task,
+                    id: Date.now().toString() + '_arch',
+                    completed: true,
+                    archived: true,
+                    completionDate: nowObj.toISOString()
+                };
+                tasks.push(archivedCopy);
+
+                // 2. Flip the active card on the board to 'wait' and reset timer
+                task.type = 'wait';
+                task.date = freshDateStr;
+
+            } else if (task.type === 'wait') {
+                // Co-player replied: flip back to 'turn' and start counting from 0d 0h
+                task.type = 'turn';
+                task.date = freshDateStr;
+            }
+
             chrome.storage.local.set({ rpgTasks: tasks });
         }
     });
@@ -509,6 +563,10 @@ document.getElementById('main-board').addEventListener('click', (e) => {
 
     const taskId = btn.getAttribute('data-task-id');
     if (!taskId) return;
+
+    if (btn.classList.contains('btn-pingpong-task')) {
+        handlePingPongAction(taskId);
+    }
 
     if (btn.classList.contains('btn-complete-task')) {
         handleCompleteAction(taskId);
@@ -572,13 +630,20 @@ document.getElementById('btn-save-task-edit').addEventListener('click', () => {
             const newType = document.getElementById('edit-task-type').value;
             const rawDate = document.getElementById('edit-task-date').value;
             
-            // SMART TIME INJECTION:
+            // // SMART TIME INJECTION (Preserves original hours if the date wasn't changed)
+            const oldDateObj = tasks[taskIndex].date || '';
+            const oldDay = oldDateObj.split('T')[0];
+            const oldTime = oldDateObj.split('T')[1];
+
             let finalDateStr = rawDate;
             if (newType === 'deadline') {
                 finalDateStr = `${rawDate}T23:59:59`;
             } else if (newType === 'turn' || newType === 'wait') {
-                const nowTimeStr = new Date().toTimeString().split(' ')[0];
-                finalDateStr = `${rawDate}T${nowTimeStr}`;
+                // Keep original start time if day didn't change and it wasn't a deadline
+                const timeToUse = (rawDate === oldDay && oldTime && oldTime !== '23:59:59')
+                    ? oldTime
+                    : new Date().toTimeString().split(' ')[0];
+                finalDateStr = `${rawDate}T${timeToUse}`;
             }
 
             tasks[taskIndex].title = document.getElementById('edit-task-title').value;
