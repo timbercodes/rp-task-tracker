@@ -2,13 +2,10 @@
  * RP Task Tracker - Content Script
  * Injected into active web pages. Responsible for parsing page data,
  * injecting the floating action button (FAB), and handling task creation/editing directly from the forum.
+ * Note: Relies on scripts/utils.js being injected first.
  */
 
-// --- SVG Icons ---
-// --- SVG Icons ---
-const ICON_EDIT_FAB = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
-const ICON_ADD_FAB = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
-const ICON_CHECK_FAB = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+(() => {
 
 // 1. Fetch extension configuration and task list on page load
 chrome.storage.local.get(['savedForums', 'rpgTasks'], (result) => {
@@ -42,7 +39,7 @@ function injectUI(forum, tasks) {
 
     // Smart icon: Set initial smart icon based on task existence
     btn.innerHTML = existingTask ? ICON_EDIT_FAB : ICON_ADD_FAB;
-    btn.title = existingTask ? 'Редактировать долг' : 'Добавить в трекер долгов';
+    btn.title = existingTask ? 'Edit task' : 'Add to task tracker';
     document.body.appendChild(btn);
 
     // --- Create Modal Container ---
@@ -64,23 +61,28 @@ function injectUI(forum, tasks) {
     const typeValue = existingTask ? existingTask.type : 'wait';
     const dateValue = existingTask ? (existingTask.date || today) : today;
     
-    const modalHeader = existingTask ? 'Редактировать долг' : `Новый долг: ${forum.name}`;
+    // SANITIZE DATA BEFORE INJECTING INTO HTML (Fixing the XSS vulnerability)
+    const safeTitleValue = escapeHTML(titleValue);
+    const safeCharValue = escapeHTML(charValue);
+    const safeForumName = escapeHTML(forum.name);
+
+    const modalHeader = existingTask ? 'Редактировать задачу' : `Новая задача: ${safeForumName}`;
     const btnText = existingTask ? 'Сохранить изменения' : 'Сохранить';
 
     // Build Modal HTML
     modal.innerHTML = `
         <span class="rpt-close" id="rpt-close-btn">&times;</span>
-        <h4 id="rpt-modal-header" style="margin: 0; color: #64ffda; font-size: 16px; padding-bottom: 10px;">${modalHeader}</h4>${existingTask ? `<div id="rpt-add-new-instead" style="font-size: 11px; color: #888; cursor: pointer; text-decoration: underline; margin-bottom: 10px;">+ Или добавить как новый долг?</div>` : ''}
+        <h4 id="rpt-modal-header" style="margin: 0; color: #64ffda; font-size: 16px; padding-bottom: 10px;">${modalHeader}</h4>${existingTask ? `<div id="rpt-add-new-instead" style="font-size: 11px; color: #888; cursor: pointer; text-decoration: underline; margin-bottom: 10px;">+ или добавить как новую задачу?</div>` : ''}
         
         <label style="font-size: 12px; color: #888;">Название темы</label>
-        <input type="text" id="rpt-title" value="${titleValue}">
+        <input type="text" id="rpt-title" value="${safeTitleValue}">
         
         <label style="font-size: 12px; color: #888;">Персонаж</label>
-        <input type="text" id="rpt-char" value="${charValue}">
+        <input type="text" id="rpt-char" value="${safeCharValue}">
         
         <label style="font-size: 12px; color: #888;">Тип задачи</label>
         <select id="rpt-type">
-            <option value="wait" ${typeValue === 'wait' ? 'selected' : ''}>Жду ответа</option>
+            <option value="wait" ${typeValue === 'wait' ? 'selected' : ''}>Ожидание ответа/Пишу ответ</option>
             <option value="deadline" ${typeValue === 'deadline' ? 'selected' : ''}>Дедлайн</option>
         </select>
         
@@ -104,7 +106,7 @@ function injectUI(forum, tasks) {
         document.getElementById('rpt-add-new-instead').addEventListener('click', (e) => {
             existingTask = null; 
             
-            document.getElementById('rpt-modal-header').textContent = `Новый долг: ${forum.name}`;
+            document.getElementById('rpt-modal-header').textContent = `Новая задача: ${safeForumName}`;
             document.getElementById('rpt-save-btn').textContent = 'Сохранить';
             e.target.style.display = 'none';
             
@@ -121,7 +123,7 @@ function injectUI(forum, tasks) {
         const type = document.getElementById('rpt-type').value;
         const date = document.getElementById('rpt-date').value;
 
-        if (!date) return alert('Укажи дату!');
+        if (!date) return alert('Пожалуйста, выберите дату!');
 
         // FETCH LATEST DATA RIGHT BEFORE SAVING TO PREVENT RACE CONDITIONS
         // This ensures concurrent tabs don't overwrite each other's saves
@@ -162,11 +164,13 @@ function injectUI(forum, tasks) {
                 // Reset button icon after 2 seconds
                 setTimeout(() => {
                     btn.innerHTML = ICON_EDIT_FAB; // Show edit icon
-                    btn.title = 'Редактировать этот долг';
-                    document.getElementById('rpt-modal-header').textContent = 'Редактировать долг';
+                    btn.title = 'Редактировать задачу';
+                    document.getElementById('rpt-modal-header').textContent = 'Редактировать задачу';
                     document.getElementById('rpt-save-btn').textContent = 'Сохранить изменения';
                 }, 2000);
             });
         });
     });
 }
+
+})();

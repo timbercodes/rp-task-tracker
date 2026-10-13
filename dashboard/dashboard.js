@@ -1,7 +1,10 @@
 /**
  * RP Task Tracker - Dashboard Controller
  * Handles UI interactions, local storage operations, and Kanban board rendering.
+ * Note: Relies on scripts/utils.js being loaded in the HTML.
  */
+
+(() => {
 
 let forums = [];
 let editingId = null;
@@ -21,13 +24,6 @@ const editModal = document.getElementById('task-edit-modal');
 const inputName = document.getElementById('forum-name');
 const inputUrl = document.getElementById('forum-url');
 const inputChars = document.getElementById('forum-chars');
-
-// --- SVG Icons ---
-const ICON_CHECK = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-const ICON_EDIT = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
-const ICON_TRASH = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
-const ICON_SETTINGS = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
-const ICON_USERS = `<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; opacity: 0.7;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`;
 
 /**
  * Initializes the extension state on DOM load.
@@ -51,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'local' && changes.rpgTasks) {
-        // Перерисовываем колонки и задачи мгновенно
+        // Instantly re-render columns and tasks
         renderKanbanColumns();
         loadAndRenderTasks();
     }
@@ -104,12 +100,16 @@ function renderForumsList() {
         const item = document.createElement('div');
         item.className = 'forum-item';
         
+        const safeName = escapeHTML(forum.name);
+        const safeUrl = escapeHTML(forum.url);
+        const safeChars = escapeHTML(forum.characters);
+
         // Build the HTML with SVG constants instead of emojis
         item.innerHTML = `
             <div class="forum-info">
-                <strong>${forum.name}</strong>
-                <span>${forum.url}</span>
-                ${forum.characters ? `<span>${ICON_USERS}${forum.characters}</span>` : ''}
+                <strong>${safeName}</strong>
+                <span>${safeUrl}</span>
+                ${safeChars ? `<span>${ICON_USERS}${safeChars}</span>` : ''}
             </div>
             <div class="forum-actions">
                 <button class="btn-edit" data-id="${forum.id}" title="Редактировать">${ICON_EDIT}</button>
@@ -243,16 +243,20 @@ function renderKanbanColumns() {
     forums.forEach(forum => {
         const col = document.createElement('div');
         col.className = 'column';
+
+        const safeName = escapeHTML(forum.name);
+        const safeChars = escapeHTML(forum.characters);
+        const safeUrl = escapeHTML(forum.url);
         
-        let charsHtml = forum.characters 
-            ? `<div style="font-size: 0.8rem; color: var(--text-muted); text-transform: none; letter-spacing: normal; margin-top: 5px;">🎭 ${forum.characters}</div>` 
+        let charsHtml = safeChars 
+            ? `<div style="font-size: 0.8rem; color: var(--text-muted); text-transform: none; letter-spacing: normal; margin-top: 5px;">${ICON_USERS} ${safeChars}</div>` 
             : '';
         
-        const forumLink = forum.url.startsWith('http') ? forum.url : `https://${forum.url}`;
+        const forumLink = safeUrl.startsWith('http') ? safeUrl : `https://${safeUrl}`;
         
         col.innerHTML = `
             <h2>
-                <a href="${forumLink}" target="_blank" style="color: inherit; text-decoration: none;" title="Перейти на форум">${forum.name}</a>
+                <a href="${forumLink}" target="_blank" style="color: inherit; text-decoration: none;" title="Перейти на форум">${safeName}</a>
                 ${charsHtml}
             </h2>
             <div class="task-list" id="list-${forum.id}"></div>
@@ -291,10 +295,14 @@ function loadAndRenderTasks() {
 
             const card = document.createElement('div');
             card.className = `task-card ${task.completed ? 'completed' : getStatusColor(task.type, task.date, now)}`;
-            
-            let titleHtml = task.url ? `<a href="${task.url}" target="_blank">${task.title}</a>` : task.title;
+
+            const safeTitle = escapeHTML(task.title);
+            const safeUrl = escapeHTML(task.url);
+            const safeTag = escapeHTML(task.tag);
+
+            let titleHtml = task.url ? `<a href="${safeUrl}" target="_blank">${safeTitle}</a>` : safeTitle;
             let timerHtml = getTimerHtml(task.type, task.date, now);
-            let tagHtml = task.tag ? `<span class="tag">${task.tag}</span>` : '';
+            let tagHtml = task.tag ? `<span class="tag">${safeTag}</span>` : '';
 
             card.innerHTML = `
                 <div class="task-header">
@@ -492,3 +500,5 @@ btnCancelSettings.addEventListener('click', () => {
         btnCancelSettings.style.display = 'none'; 
     });
 });
+
+})();
