@@ -287,6 +287,18 @@ function loadAndRenderTasks() {
         // --- FILTER ARCHIVE ---
         let activeTasks = tasks.filter(t => !t.archived);
 
+        // --- DASHBOARD SUMMARY ---
+        const turnsCount = activeTasks.filter(t => t.type === 'turn').length;
+        const waitsCount = activeTasks.filter(t => t.type === 'wait').length;
+        
+        const summaryEl = document.getElementById('dashboard-summary');
+        if (summaryEl) {
+            summaryEl.innerHTML = 
+                `Играю на форумах: <span style="color: var(--accent); font-weight: 600;">${forums.length}</span> &nbsp;•&nbsp; ` +
+                `Должен постов: <span style="color: var(--accent); font-weight: 600;">${turnsCount}</span> &nbsp;•&nbsp; ` +
+                `Жду ответов: <span style="color: var(--accent); font-weight: 600;">${waitsCount}</span>`;
+        }
+
         // --- SMART PRIORITY SORTING ---
         activeTasks.sort((a, b) => {
             // 1. Completed tasks ALWAYS go to the absolute bottom
