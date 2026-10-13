@@ -9,6 +9,8 @@
 let forums = [];
 let editingId = null;
 let currentEditingTaskId = null;
+let pendingDeleteForumId = null;
+const deleteForumModal = document.getElementById('forum-delete-modal');
 
 // --- DOM Elements ---
 const onboardingView = document.getElementById('onboarding-view');
@@ -132,23 +134,13 @@ forumsList.addEventListener('click', (e) => {
     const id = btn.getAttribute('data-id');
 
     if (btn.classList.contains('btn-delete')) {
-        // Remove forum from array
-        forums = forums.filter(f => f.id !== id);
-        
-        // CASCADING DELETE: Remove all tasks associated with this forum ID
-        chrome.storage.local.get(['rpgTasks'], (result) => {
-            let tasks = result.rpgTasks || [];
-            const originalLength = tasks.length;
-            tasks = tasks.filter(t => t.forumId !== id);
-            
-            // Save cleaned tasks back to memory
-            if (tasks.length !== originalLength) {
-                chrome.storage.local.set({ rpgTasks: tasks });
-            }
-        });
-        
-        renderForumsList();
-        checkFinishButton();
+        const forumToDelete = forums.find(f => f.id === id);
+        if (!forumToDelete) return;
+
+        // Open custom single-step confirmation modal
+        pendingDeleteForumId = id;
+        document.getElementById('delete-forum-title').textContent = `Удалить «${forumToDelete.name}»?`;
+        deleteForumModal.style.display = 'flex';
     }
 
     if (btn.classList.contains('btn-edit')) {
@@ -370,6 +362,18 @@ function loadAndRenderTasks() {
             `;
             
             column.appendChild(card);
+        });
+
+        // --- EMPTY STATE FOR COLUMNS ---
+        // If a forum column has no active tasks, show a helpful placeholder
+        document.querySelectorAll('.task-list').forEach(col => {
+            if (col.children.length === 0) {
+                col.innerHTML = `
+                    <div style="text-align: center; padding: 30px 15px; color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; border: 1px dashed var(--border); border-radius: 6px; margin-top: 5px; opacity: 0.7;">
+                        Пока никаких задач.<br>Ты сможешь добавить их прямо со страницы форума, на котором играешь ✨
+                    </div>
+                `;
+            }
         });
     });
 }
@@ -634,5 +638,71 @@ function resetDailiesIfNeeded(tasks) {
 
     return needsUpdate;
 }
+
+/**
+ * Executes forum deletion with the chosen archive strategy.
+ * @param {boolean} keepArchive - True to preserve archived tasks, false to wipe all
+ */
+function executeForumDeletion(keepArchive) {
+    if (!pendingDeleteForumId) return;
+    
+    const id = pendingDeleteForumId;
+    const forumToDelete = forums.find(f => f.id === id);
+    if (!forumToDelete) return;
+
+    // Remove forum from active array
+    forums = forums.filter(f => f.id !== id);
+
+    // CASCADING DELETE: Handle tasks associated with this forum ID
+    chrome.storage.local.get(['rpgTasks'], (result) => {
+        let tasks = result.rpgTasks || [];
+
+        if (keepArchive) {
+            // Soft delete: keep archived tasks, remove only active ones
+            tasks = tasks.filter(t => t.forumId !== id || t.archived);
+            
+            // Bake the forum name into orphaned archived tasks
+            tasks.forEach(t => {
+                if (t.forumId === id && t.archived) {
+                    t.forumName = forumToDelete.name;
+                }
+            });
+        } else {
+            // Hard delete: remove all tasks for this forum
+            tasks = tasks.filter(t => t.forumId !== id);
+        }
+
+        chrome.storage.local.set({ rpgTasks: tasks });
+    });
+
+    // Reset modal state and update UI
+    deleteForumModal.style.display = 'none';
+    pendingDeleteForumId = null;
+    renderForumsList();
+    checkFinishButton();
+}
+
+// Modal button listeners
+document.getElementById('btn-delete-keep-archive').addEventListener('click', () => executeForumDeletion(true));
+document.getElementById('btn-delete-wipe-all').addEventListener('click', () => executeForumDeletion(false));
+
+function closeDeleteForumModal() {
+    deleteForumModal.style.display = 'none';
+    pendingDeleteForumId = null;
+}
+
+document.getElementById('btn-cancel-delete-forum').addEventListener('click', closeDeleteForumModal);
+document.getElementById('btn-close-delete-modal').addEventListener('click', closeDeleteForumModal);
+
+// Close modals on 'Escape' key press or clicking outside the card
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (deleteForumModal.style.display === 'flex') closeDeleteForumModal();
+        if (editModal.style.display === 'flex') {
+            editModal.style.display = 'none';
+            currentEditingTaskId = null;
+        }
+    }
+});
 
 })();

@@ -37,9 +37,10 @@ function loadArchive() {
         }
 
         archivedTasks.forEach(task => {
-            // Ищем название форума для красивого отображения
+            // Find forum name (fallback to baked-in task.forumName if the forum was deleted)
             const forum = forums.find(f => f.id === task.forumId);
-            const forumName = forum ? forum.name : 'Неизвестный форум';
+            const rawForumName = forum ? forum.name : (task.forumName || 'Удаленный форум');
+            const safeForumName = escapeHTML(rawForumName);
 
             // Форматируем дату завершения (ДД.ММ.ГГГГ)
             const finishDate = task.completionDate ? new Date(task.completionDate).toLocaleDateString('ru-RU') : 'Неизвестно';
@@ -77,7 +78,7 @@ function loadArchive() {
                 <div>
                     <div>${titleHtml}</div>
                     <div class="archive-meta">
-                        <span style="color: var(--accent);">${forumName}</span>
+                        <span style="color: var(--accent);">${safeForumName}</span>
                         <span>•</span>
                         <span>${typeLabel}</span>
                         ${tagHtml ? `<span>•</span> ${tagHtml}` : ''}
