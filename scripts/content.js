@@ -39,7 +39,7 @@ function injectUI(forum, tasks) {
 
     // Smart icon: Set initial smart icon based on task existence
     btn.innerHTML = existingTask ? ICON_EDIT_FAB : ICON_ADD_FAB;
-    btn.title = existingTask ? 'Edit task' : 'Add to task tracker';
+    btn.title = existingTask ? 'Редактировать задачу' : 'Добавить в трекер задач';
     document.body.appendChild(btn);
 
     // --- Create Modal Container ---
@@ -82,8 +82,10 @@ function injectUI(forum, tasks) {
         
         <label style="font-size: 12px; color: #888;">Тип задачи</label>
         <select id="rpt-type">
-            <option value="wait" ${typeValue === 'wait' ? 'selected' : ''}>Ожидание ответа/Пишу ответ</option>
-            <option value="deadline" ${typeValue === 'deadline' ? 'selected' : ''}>Дедлайн</option>
+            <option value="wait" ${typeValue === 'wait' ? 'selected' : ''}>Жду ответа</option>
+            <option value="turn" ${typeValue === 'turn' ? 'selected' : ''}>Мой долг</option>
+            <option value="daily" ${typeValue === 'daily' ? 'selected' : ''}>Ежедневная рутина</option>
+            <option value="deadline" ${typeValue === 'deadline' ? 'selected' : ''}>Срочный дедлайн</option>
         </select>
         
         <label style="font-size: 12px; color: #888;">Дата</label>
@@ -121,9 +123,21 @@ function injectUI(forum, tasks) {
         const title = document.getElementById('rpt-title').value;
         const char = document.getElementById('rpt-char').value;
         const type = document.getElementById('rpt-type').value;
-        const date = document.getElementById('rpt-date').value;
+        const rawDate = document.getElementById('rpt-date').value;
 
-        if (!date) return alert('Пожалуйста, выберите дату!');
+        if (!rawDate) return alert('Пожалуйста, выбери дату!');
+
+        // SMART TIME INJECTION:
+        let finalDateStr = rawDate;
+        if (type === 'deadline') {
+            // Deadline till 23:59:59 on that day
+            finalDateStr = `${rawDate}T23:59:59`;
+        } else if (type === 'turn' || type === 'wait') {
+            // Debt/Waiting tasks start counting from the current time (hours, minutes, seconds)
+            const nowTimeStr = new Date().toTimeString().split(' ')[0]; // Extract "HH:MM:SS"
+            finalDateStr = `${rawDate}T${nowTimeStr}`;
+        }
+        // Daily tasks remain as is (just YYYY-MM-DD), their time is not important
 
         // FETCH LATEST DATA RIGHT BEFORE SAVING TO PREVENT RACE CONDITIONS
         // This ensures concurrent tabs don't overwrite each other's saves
@@ -137,7 +151,7 @@ function injectUI(forum, tasks) {
                     latestTasks[taskIndex].title = title;
                     latestTasks[taskIndex].tag = char;
                     latestTasks[taskIndex].type = type;
-                    latestTasks[taskIndex].date = date;
+                    latestTasks[taskIndex].date = finalDateStr;
                 }
             } else {
                 // Create new task object
@@ -148,7 +162,7 @@ function injectUI(forum, tasks) {
                     url: currentUrl,
                     tag: char,
                     type: type,
-                    date: date,
+                    date: finalDateStr,
                     completed: false,
                     archived: false
                 };

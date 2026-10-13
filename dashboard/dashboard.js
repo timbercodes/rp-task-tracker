@@ -19,6 +19,7 @@ const forumsList = document.getElementById('added-forums-list');
 const btnSettings = document.getElementById('btn-settings');
 const btnCancelSettings = document.getElementById('btn-cancel-settings');
 const editModal = document.getElementById('task-edit-modal');
+const btnArchive = document.getElementById('btn-archive');
 
 // --- Input Fields ---
 const inputName = document.getElementById('forum-name');
@@ -32,6 +33,7 @@ const inputChars = document.getElementById('forum-chars');
 document.addEventListener('DOMContentLoaded', () => {
     // Inject the settings icon into the HTML button
     document.getElementById('btn-settings').innerHTML = ICON_SETTINGS;
+    document.getElementById('btn-archive').innerHTML = ICON_ARCHIVE;
 
     chrome.storage.local.get(['savedForums'], (result) => {
         if (result.savedForums && result.savedForums.length > 0) {
@@ -203,6 +205,10 @@ btnFinish.addEventListener('click', () => {
     });
 });
 
+btnArchive.addEventListener('click', () => {
+    window.location.href = 'archive.html';
+});
+
 /**
  * Transitions back to the settings/onboarding view.
  */
@@ -271,24 +277,66 @@ function renderKanbanColumns() {
  */
 function loadAndRenderTasks() {
     chrome.storage.local.get(['rpgTasks'], (result) => {
-        const tasks = result.rpgTasks || [];
+        let tasks = result.rpgTasks || [];
+
+        // --- CHECK AND RESET DAILIES ---
+        const wasUpdated = resetDailiesIfNeeded(tasks);
+        if (wasUpdated) {
+            // If the script reset checkboxes, save the new data to memory.
+            // The chrome.storage.onChanged listener will restart this function,
+            // so we just interrupt execution here to avoid rendering twice.
+            chrome.storage.local.set({ rpgTasks: tasks });
+            return; 
+        }
+        // -----------------------------------
+
         const now = new Date().getTime();
 
-        // Sort tasks: Urgent deadlines and long-awaited replies at the top
-        tasks.sort((a, b) => {
-            if (a.completed !== b.completed) return a.completed ? 1 : -1;
-            
+        // --- FILTER ARCHIVE ---
+        let activeTasks = tasks.filter(t => !t.archived);
+
+        // --- SMART PRIORITY SORTING ---
+        activeTasks.sort((a, b) => {
+            // 1. Completed tasks ALWAYS go to the absolute bottom
+            if (a.completed && !b.completed) return 1;
+            if (!a.completed && b.completed) return -1;
+            if (a.completed && b.completed) return 0;
+
             let timeA = new Date(a.date).getTime();
             let timeB = new Date(b.date).getTime();
             
-            let urgencyA = a.type === 'deadline' ? timeA - now : now - timeA;
-            let urgencyB = b.type === 'deadline' ? timeB - now : now - timeB;
+            // Helper function to calculate an absolute "urgency score" for an active task.
+            // LOWER score means HIGHER priority (closer to the top of the column).
+            function getUrgencyScore(type, targetTime) {
+                const diffMs = now - targetTime;
+                const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+                switch(type) {
+                    case 'daily':
+                        return -10000; // Dailies always at the top
+
+                    case 'deadline':
+                        return -5000 - diffDays; // Deadlines (high priority, burns as time goes on)
+
+                    case 'turn':
+                        return 0 - diffDays; // Personal debts (older = more urgent)
+
+                    case 'wait':
+                        return 5000 - diffDays; // Waiting (lowest active priority)
+
+                    default:
+                        return 10000;
+                }
+            }
+
+            let urgencyA = getUrgencyScore(a.type, timeA);
+            let urgencyB = getUrgencyScore(b.type, timeB);
 
             return urgencyA - urgencyB;
         });
 
-        // Sort and distribute tasks across columns
-        tasks.forEach(task => {
+        // --- Sort and distribute tasks across columns ---
+        activeTasks.forEach(task => {
             // Find the column that belongs to this forum (id="list-{forumId}")
             const column = document.getElementById(`list-${task.forumId}`);
             if (!column) return; // If the forum was deleted, the card won't be rendered (or you can send it to archive)
@@ -301,7 +349,7 @@ function loadAndRenderTasks() {
             const safeTag = escapeHTML(task.tag);
 
             let titleHtml = task.url ? `<a href="${safeUrl}" target="_blank">${safeTitle}</a>` : safeTitle;
-            let timerHtml = getTimerHtml(task.type, task.date, now);
+            let timerHtml = getTimerHtml(task.type, task.date, now, task);
             let tagHtml = task.tag ? `<span class="tag">${safeTag}</span>` : '';
 
             card.innerHTML = `
@@ -328,45 +376,71 @@ function loadAndRenderTasks() {
 
 /**
  * Determines the border color class based on task type and time differential.
- * @param {string} type - Task type ('wait' or 'deadline')
+ * @param {string} type - Task type ('wait', 'turn', 'daily', 'deadline')
  * @param {string} date - ISO date string
  * @param {number} now - Current timestamp
  * @returns {string} CSS class for status color
  */
 function getStatusColor(type, date, now) {
     const target = new Date(date).getTime();
-    const diffDays = (now - target) / (1000 * 60 * 60 * 24);
     
-    if (type === 'wait') {
+    if (type === 'wait' || type === 'turn') {
+        // Counting up: time passed since the event occurred
+        const diffDays = (now - target) / (1000 * 60 * 60 * 24);
         if (diffDays > 7) return 'status-red';
         if (diffDays > 3) return 'status-yellow';
         return 'status-green';
-    } else {
+    } else if (type === 'deadline') {
+        // Counting down: time left until deadline
         const leftDays = (target - now) / (1000 * 60 * 60 * 24);
         if (leftDays < 2) return 'status-red';
         if (leftDays < 5) return 'status-yellow';
         return 'status-green';
+    } else if (type === 'daily') {
+        // Daily tasks reset or are simply marked. Using a green status for MVP.
+        return 'status-green'; 
     }
+    
+    return 'status-green'; // Fallback
 }
 
 /**
  * Generates the HTML for the task timer based on its type and time differential.
- * @param {string} type - Task type ('wait' or 'deadline')
+ * @param {string} type - Task type ('wait', 'turn', 'daily', 'deadline')
  * @param {string} date - ISO date string
  * @param {number} now - Current timestamp
+ * @param {Object} task - The full task object (needed to check completion date)
  * @returns {string} HTML string for the timer
  */
-function getTimerHtml(type, date, now) {
+function getTimerHtml(type, date, now, task) {
     const target = new Date(date).getTime();
-    let diff = type === 'wait' ? now - target : target - now;
+    
+    if (type === 'daily') {
+        return `<span>Ежедневка</span>`; 
+    }
+
+    // Timer fix: which timeReference to use for calculation?
+    let timeReference = now;
+    // If the task is completed and has a specific completion date, calculate based on that
+    if (task && task.completed && task.completionDate) {
+        timeReference = new Date(task.completionDate).getTime();
+    }
+    
+    // For wait/turn we calculate how much time has passed. For deadline - how much is left.
+    let diff = (type === 'wait' || type === 'turn') ? (timeReference - target) : (target - timeReference);
     
     if (type === 'deadline' && diff < 0) return '<span style="color: var(--red);">Просрочено!</span>';
     
+    if (diff < 0) diff = 0;
+
     const d = Math.floor(diff / (1000 * 60 * 60 * 24));
     const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     
-    let prefix = type === 'wait' ? 'Жду ответа: ' : 'Осталось: ';
-    return `${prefix} ${d}д ${h}ч`;
+    if (type === 'wait') return `Жду ответа: ${d}д ${h}ч`;
+    if (type === 'turn') return `Мой долг: ${d}д ${h}ч`;
+    if (type === 'deadline') return `Осталось: ${d}д ${h}ч`;
+    
+    return '';
 }
 
 /**
@@ -384,20 +458,37 @@ function deleteTask(id) {
 }
 
 /**
- * Toggles the 'completed' status of a task.
- * Thanks to the storage listener, changing this will automatically trigger a re-render.
+ * Handles the completion of a task.
+ * Dailies are just crossed out (completed: true) until midnight reset.
+ * Other tasks are sent to the archive.
  * @param {string} id - Task identifier
  */
-function toggleTaskCompletion(id) {
+function handleCompleteAction(id) {
     chrome.storage.local.get(['rpgTasks'], (result) => {
         let tasks = result.rpgTasks || [];
-        const task = tasks.find(t => t.id === id);
-        
-        if (task) {
-            task.completed = !task.completed;
+        const taskIndex = tasks.findIndex(t => t.id === id);
+
+        if (taskIndex > -1) {
+            const task = tasks[taskIndex];
+
+            if (task.type === 'daily') {
+                task.completed = !task.completed;
+            } else if (task.type === 'wait') {
+                // Wait: Delete from memory. We don't need statistics for waits.
+                if (confirm('Ожидание ответа завершено. Удалить эту задачу с доски? (В архив она не попадет)')) {
+                    tasks.splice(taskIndex, 1);
+                } else {
+                    return; // If the user clicked "Cancel" - do nothing
+                }
+            } else {
+                task.archived = true;
+                task.completed = true;
+                // Timer frozen: Saving the exact completion time
+                task.completionDate = new Date().toISOString();
+            }
             
-            // Saving to memory. UI will update automatically due to chrome.storage.onChanged
-            chrome.storage.local.set({ rpgTasks: tasks }); 
+            // Saving to memory. UI will update automatically due to chrome.storage.onChanged listener.
+            chrome.storage.local.set({ rpgTasks: tasks });
         }
     });
 }
@@ -416,7 +507,7 @@ document.getElementById('main-board').addEventListener('click', (e) => {
     if (!taskId) return;
 
     if (btn.classList.contains('btn-complete-task')) {
-        toggleTaskCompletion(taskId);
+        handleCompleteAction(taskId);
     }
 
     if (btn.classList.contains('btn-delete-task')) {
@@ -474,10 +565,22 @@ document.getElementById('btn-save-task-edit').addEventListener('click', () => {
         const taskIndex = tasks.findIndex(t => t.id === currentEditingTaskId);
         
         if (taskIndex > -1) {
+            const newType = document.getElementById('edit-task-type').value;
+            const rawDate = document.getElementById('edit-task-date').value;
+            
+            // SMART TIME INJECTION:
+            let finalDateStr = rawDate;
+            if (newType === 'deadline') {
+                finalDateStr = `${rawDate}T23:59:59`;
+            } else if (newType === 'turn' || newType === 'wait') {
+                const nowTimeStr = new Date().toTimeString().split(' ')[0];
+                finalDateStr = `${rawDate}T${nowTimeStr}`;
+            }
+
             tasks[taskIndex].title = document.getElementById('edit-task-title').value;
             tasks[taskIndex].tag = document.getElementById('edit-task-char').value;
-            tasks[taskIndex].type = document.getElementById('edit-task-type').value;
-            tasks[taskIndex].date = document.getElementById('edit-task-date').value;
+            tasks[taskIndex].type = newType;
+            tasks[taskIndex].date = finalDateStr;
 
             chrome.storage.local.set({ rpgTasks: tasks }, () => {
                 editModal.style.display = 'none';
@@ -500,5 +603,36 @@ btnCancelSettings.addEventListener('click', () => {
         btnCancelSettings.style.display = 'none'; 
     });
 });
+
+/**
+ * Checks and resets daily tasks if a new day has started in Moscow (UTC+3).
+ * @param {Array} tasks - Array of task objects
+ * @returns {boolean} - Returns true if any task was modified
+ */
+function resetDailiesIfNeeded(tasks) {
+    // Get current time specifically in the Moscow time zone
+    const moscowTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Moscow"}));
+    
+    // Form the YYYY-MM-DD string for Moscow
+    const yyyy = moscowTime.getFullYear();
+    const mm = String(moscowTime.getMonth() + 1).padStart(2, '0');
+    const dd = String(moscowTime.getDate()).padStart(2, '0');
+    const todayMoscow = `${yyyy}-${mm}-${dd}`;
+
+    let needsUpdate = false;
+
+    tasks.forEach(task => {
+        if (task.type === 'daily') {
+            // If the daily task date is earlier than today's date in Moscow
+            if (task.date < todayMoscow) {
+                task.date = todayMoscow; // Update the date
+                task.completed = false;  // Remove the completion check
+                needsUpdate = true;
+            }
+        }
+    });
+
+    return needsUpdate;
+}
 
 })();

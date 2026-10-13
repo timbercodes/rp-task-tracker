@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Архив - RP Task Tracker</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <style>
+        /* Дополнительные стили для списка архива */
+        .archive-container { max-width: 900px; margin: 0 auto; padding: 40px; }
+        .archive-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        .archive-list { display: flex; flex-direction: column; gap: 15px; }
+        .archive-card { background-color: var(--surface); padding: 20px; border-radius: 8px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .archive-meta { font-size: 0.85rem; color: var(--text-muted); display: flex; gap: 15px; margin-top: 8px; }
+        .archive-stats { text-align: right; }
+        .time-taken { color: var(--accent); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <main class="view-container archive-container">
+        <header class="archive-header">
+            <div>
+                <h1>📦 Архив задач</h1>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 5px;">История твоих завершенных постов и закрытых дедлайнов</p>
+            </div>
+            <button id="btn-back-dashboard" class="secondary-btn">Вернуться к доске</button>
+        </header>
+
+        <div id="archive-list" class="archive-list">
+            <!-- Сюда будут подгружаться архивные карточки -->
+        </div>
+    </main>
+
+    <script src="../scripts/utils.js"></script>
+    <script src="archive.js"></script>
+</body>
+</html>

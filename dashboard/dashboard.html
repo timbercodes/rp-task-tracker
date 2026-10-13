@@ -48,7 +48,10 @@
     <main id="kanban-view" class="view-container" style="display: none;">
         <header>
             <h1>Мои долги</h1>
-            <button id="btn-settings" class="secondary-btn"></button>
+            <div style="display: flex; gap: 10px;">
+                <button id="btn-archive" class="secondary-btn" title="Архив"></button>
+                <button id="btn-settings" class="secondary-btn"></button>
+            </div>
         </header>
 
         <!-- Kanban Columns Container (Generated via JS) -->
@@ -68,7 +71,9 @@
                 <input type="text" id="edit-task-char" placeholder="Персонаж">
                 <select id="edit-task-type" style="padding: 10px; background: var(--bg-color); color: white; border: 1px solid var(--border); border-radius: 6px;">
                     <option value="wait">Жду ответа</option>
-                    <option value="deadline">Дедлайн</option>
+                    <option value="turn">Мой долг</option>
+                    <option value="daily">Ежедневная рутина</option>
+                    <option value="deadline">Срочный дедлайн</option>
                 </select>
                 <input type="date" id="edit-task-date">
                 
