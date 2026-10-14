@@ -24,7 +24,70 @@ const ICON_CHECK_FAB = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="
  */
 function escapeHTML(str) {
     if (!str) return '';
-    return str.replace(/[&<>'"]/g, tag => ({
+    return String(str).replace(/[&<>'"]/g, tag => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     }[tag]));
+}
+
+/**
+ * Normalizes forum characters into a clean array of unique strings (case-insensitive).
+ * Automatically migrates legacy comma-separated strings into arrays.
+ * @param {Object|Array|string} forumOrChars - Forum object or raw characters value
+ * @returns {Array<string>} Array of character names
+ */
+function getForumChars(forumOrChars) {
+    const raw = (forumOrChars && typeof forumOrChars === 'object' && !Array.isArray(forumOrChars))
+        ? forumOrChars.characters
+        : forumOrChars;
+
+    if (!raw) return [];
+    const list = Array.isArray(raw) ? raw : String(raw).split(',');
+    const unique = [];
+
+    list.forEach(item => {
+        const clean = String(item).trim();
+        if (clean && !unique.some(existing => existing.toLowerCase() === clean.toLowerCase())) {
+            unique.push(clean);
+        }
+    });
+    return unique;
+}
+
+/**
+ * Matches a character name (or comma-separated list of names) against saved forum characters.
+ * Preserves the user's preferred casing from settings if a match is found.
+ * @param {Array<string>} forumChars - Array of saved character names for the forum
+ * @param {string} rawTagInput - Input string from the task field or UserLogin
+ * @returns {{ formattedTag: string, updatedForumChars: Array<string>, hasNewChars: boolean }}
+ */
+function resolveAndLearnCharacters(forumChars, rawTagInput) {
+    const currentChars = [...getForumChars(forumChars)];
+    if (!rawTagInput || !rawTagInput.trim()) {
+        return { formattedTag: '', updatedForumChars: currentChars, hasNewChars: false };
+    }
+
+    let hasNewChars = false;
+    const inputNames = rawTagInput.split(',').map(s => s.trim()).filter(Boolean);
+    const resolvedNames = [];
+
+    inputNames.forEach(name => {
+        const existingMatch = currentChars.find(c => c.toLowerCase() === name.toLowerCase());
+        if (existingMatch) {
+            // Use the exact casing stored in user's settings
+            if (!resolvedNames.some(r => r.toLowerCase() === existingMatch.toLowerCase())) {
+                resolvedNames.push(existingMatch);
+            }
+        } else {
+            // New character! Keep it and auto-add to forum's character list
+            resolvedNames.push(name);
+            currentChars.push(name);
+            hasNewChars = true;
+        }
+    });
+
+    return {
+        formattedTag: resolvedNames.join(', '),
+        updatedForumChars: currentChars,
+        hasNewChars: hasNewChars
+    };
 }

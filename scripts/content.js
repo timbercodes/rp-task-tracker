@@ -49,8 +49,22 @@ function injectUI(forum, tasks) {
     // Parse the forum topic title, removing standard trailing elements
     let cleanTitle = document.title.split(' - ')[0].trim();
     
-    // Extract default character if specified in settings
-    let defaultChar = forum.characters ? forum.characters.split(',')[0].trim() : '';
+    // Extract saved characters array for this forum
+    let forumChars = getForumChars(forum);
+
+    // Smart UserLogin detection from forum HTML (Rusff / MyBB)
+    const loginMatch = document.documentElement.innerHTML.match(/UserLogin\s*=\s*['"]([^'"]+)['"]/);
+    const rawPageLogin = loginMatch ? loginMatch[1].trim() : '';
+    const isGuest = !rawPageLogin || ['гость', 'guest', 'реклама', 'pr'].includes(rawPageLogin.toLowerCase());
+
+    let defaultChar = '';
+    if (!isGuest) {
+        // Check if page login matches a saved character (case-insensitive)
+        const matchedSaved = forumChars.find(c => c.toLowerCase() === rawPageLogin.toLowerCase());
+        defaultChar = matchedSaved || rawPageLogin;
+    } else {
+        defaultChar = forumChars[0] || '';
+    }
 
     // Get current date for default value in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0];
@@ -81,6 +95,7 @@ function injectUI(forum, tasks) {
         
         <label style="font-size: 12px; color: #888;">Персонаж</label>
         <input type="text" id="rpt-char" value="${safeCharValue}">
+        <div id="rpt-char-pills" class="rpt-char-pills"></div>
         
         <label style="font-size: 12px; color: #888;">Тип задачи</label>
         <select id="rpt-type">
@@ -99,6 +114,43 @@ function injectUI(forum, tasks) {
         <button id="rpt-save-btn">${btnText}</button>
     `;
     document.body.appendChild(modal);
+
+    const charInputEl = document.getElementById('rpt-char');
+    const pillsContainerEl = document.getElementById('rpt-char-pills');
+
+    function renderContentCharPills() {
+        pillsContainerEl.innerHTML = '';
+        if (forumChars.length === 0) {
+            pillsContainerEl.style.display = 'none';
+            return;
+        }
+        pillsContainerEl.style.display = 'flex';
+
+        const currentNames = charInputEl.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+        forumChars.forEach(c => {
+            const pill = document.createElement('span');
+            pill.className = 'rpt-char-pill' + (currentNames.includes(c.toLowerCase()) ? ' rpt-pill-active' : '');
+            pill.textContent = c;
+            pill.title = 'Клик — выбрать (Ctrl+Клик — выбрать нескольких)';
+            pill.addEventListener('click', (ev) => {
+                if (ev.ctrlKey || ev.metaKey || ev.shiftKey) {
+                    const existing = charInputEl.value.split(',').map(s => s.trim()).filter(Boolean);
+                    const idx = existing.findIndex(x => x.toLowerCase() === c.toLowerCase());
+                    if (idx > -1) existing.splice(idx, 1);
+                    else existing.push(c);
+                    charInputEl.value = existing.join(', ');
+                } else {
+                    charInputEl.value = c;
+                }
+                renderContentCharPills();
+            });
+            pillsContainerEl.appendChild(pill);
+        });
+    }
+
+    charInputEl.addEventListener('input', renderContentCharPills);
+    renderContentCharPills();
 
     // --- Event Listeners ---
     
@@ -151,27 +203,40 @@ function injectUI(forum, tasks) {
 
         // FETCH LATEST DATA RIGHT BEFORE SAVING TO PREVENT RACE CONDITIONS
         // This ensures concurrent tabs don't overwrite each other's saves
-        chrome.storage.local.get(['rpgTasks'], (result) => {
+        chrome.storage.local.get(['rpgTasks', 'savedForums'], (result) => {
             let latestTasks = result.rpgTasks || [];
+            let latestForums = result.savedForums || [];
+
+            // Resolve character casing and auto-learn new characters
+            const resolved = resolveAndLearnCharacters(forumChars, char);
+            const finalCharTag = resolved.formattedTag;
+
+            if (resolved.hasNewChars) {
+                forumChars = resolved.updatedForumChars;
+                const forumIdx = latestForums.findIndex(f => f.id === forum.id);
+                if (forumIdx > -1) {
+                    latestForums[forumIdx].characters = forumChars;
+                    chrome.storage.local.set({ savedForums: latestForums });
+                }
+                renderContentCharPills();
+            }
 
             if (existingTask) {
-                // Find and update existing task in the fresh array
                 const taskIndex = latestTasks.findIndex(t => t.id === existingTask.id);
                 if (taskIndex > -1) {
                     latestTasks[taskIndex].title = title;
-                    latestTasks[taskIndex].tag = char;
+                    latestTasks[taskIndex].tag = finalCharTag;
                     latestTasks[taskIndex].type = type;
                     latestTasks[taskIndex].date = finalDateStr;
                     latestTasks[taskIndex].note = note;
                 }
             } else {
-                // Create new task object
                 const newTask = {
                     id: Date.now().toString(),
                     forumId: forum.id,
                     title: title,
                     url: currentUrl,
-                    tag: char,
+                    tag: finalCharTag,
                     type: type,
                     date: finalDateStr,
                     note: note,
@@ -179,7 +244,7 @@ function injectUI(forum, tasks) {
                     archived: false
                 };
                 latestTasks.push(newTask);
-                existingTask = newTask; // Update reference for UI feedback
+                existingTask = newTask;
             }
 
             // Persist data and provide visual feedback

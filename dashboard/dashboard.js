@@ -11,6 +11,8 @@ let editingId = null;
 let currentEditingTaskId = null;
 let pendingDeleteForumId = null;
 const deleteForumModal = document.getElementById('forum-delete-modal');
+let pendingDeleteChar = null; // { forumId, charName }
+const deleteCharModal = document.getElementById('char-delete-modal');
 
 // --- DOM Elements ---
 const onboardingView = document.getElementById('onboarding-view');
@@ -40,6 +42,19 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.get(['savedForums'], (result) => {
         if (result.savedForums && result.savedForums.length > 0) {
             forums = result.savedForums;
+
+            // =================================================================
+            // TODO: [AUTO-MIGRATOR v1.2.0] — УДАЛИТЬ ЭТОТ БЛОК ПОСЛЕ ПЕРЕХОДА
+            // Автоматически переводит старые строки ("John, Jane") в массивы в базе
+            if (forums.some(f => typeof f.characters === 'string')) {
+                forums = forums.map(f => ({
+                    ...f,
+                    characters: getForumChars(f.characters)
+                }));
+                chrome.storage.local.set({ savedForums: forums });
+            }
+            // =================================================================
+
             showKanbanView();
         }
     });
@@ -50,10 +65,17 @@ document.addEventListener('DOMContentLoaded', () => {
  * and automatically re-renders the dashboard without needing to refresh the page.
  */
 chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === 'local' && changes.rpgTasks) {
-        // Instantly re-render columns and tasks
-        renderKanbanColumns();
-        loadAndRenderTasks();
+    if (namespace === 'local') {
+        if (changes.savedForums) {
+            forums = (changes.savedForums.newValue || []).map(f => ({
+                ...f,
+                characters: getForumChars(f)
+            }));
+        }
+        if (changes.rpgTasks || changes.savedForums) {
+            renderKanbanColumns();
+            loadAndRenderTasks();
+        }
     }
 });
 
@@ -63,7 +85,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 btnAddForum.addEventListener('click', () => {
     const name = inputName.value.trim();
     const url = inputUrl.value.trim();
-    const chars = inputChars.value.trim();
+    const chars = getForumChars(inputChars.value);
 
     if (!name || !url) {
         alert('Название и ссылка обязательны!');
@@ -95,7 +117,7 @@ btnAddForum.addEventListener('click', () => {
 });
 
 /**
- * Renders the list of configured forums in the onboarding/settings view.
+ * Renders the list of configured forums with interactive character chips.
  */
 function renderForumsList() {
     forumsList.innerHTML = '';
@@ -106,18 +128,25 @@ function renderForumsList() {
         
         const safeName = escapeHTML(forum.name);
         const safeUrl = escapeHTML(forum.url);
-        const safeChars = escapeHTML(forum.characters);
+        const charList = getForumChars(forum);
 
-        // Build the HTML with SVG constants instead of emojis
+        const chipsHtml = charList.map(c => {
+            const safeChar = escapeHTML(c);
+            return `<span class="char-chip">${safeChar}<span class="char-chip-remove" data-forum-id="${forum.id}" data-char="${safeChar}" title="Удалить персонажа">&times;</span></span>`;
+        }).join('');
+
         item.innerHTML = `
-            <div class="forum-info">
+            <div class="forum-info" style="flex: 1; padding-right: 10px;">
                 <strong>${safeName}</strong>
                 <span>${safeUrl}</span>
-                ${safeChars ? `<span>${ICON_USERS}${safeChars}</span>` : ''}
+                <div class="char-chips-container" data-forum-id="${forum.id}">
+                    ${chipsHtml}
+                    <button type="button" class="char-chip-add-btn" data-forum-id="${forum.id}" title="Быстро добавить персонажа">+ Персонаж</button>
+                </div>
             </div>
             <div class="forum-actions">
-                <button class="btn-edit" data-id="${forum.id}" title="Редактировать">${ICON_EDIT}</button>
-                <button class="btn-delete" data-id="${forum.id}" title="Удалить">${ICON_TRASH}</button>
+                <button class="btn-edit" data-id="${forum.id}" title="Редактировать форум">${ICON_EDIT}</button>
+                <button class="btn-delete" data-id="${forum.id}" title="Удалить форум">${ICON_TRASH}</button>
             </div>
         `;
         forumsList.appendChild(item);
@@ -125,9 +154,61 @@ function renderForumsList() {
 }
 
 /**
- * Event delegation for forum list actions (Edit/Delete).
+ * Event delegation for forum list actions (Edit/Delete forum, Add/Remove character chips).
  */
 forumsList.addEventListener('click', (e) => {
+    // 1. Handle clicking 'x' on a character chip
+    const removeChipBtn = e.target.closest('.char-chip-remove');
+    if (removeChipBtn) {
+        const forumId = removeChipBtn.getAttribute('data-forum-id');
+        const charName = removeChipBtn.getAttribute('data-char');
+        pendingDeleteChar = { forumId, charName };
+        document.getElementById('delete-char-title').textContent = `Удалить персонажа «${charName}»?`;
+        deleteCharModal.style.display = 'flex';
+        return;
+    }
+
+    // 2. Handle clicking '+ Персонаж' inline button
+    const addChipBtn = e.target.closest('.char-chip-add-btn');
+    if (addChipBtn) {
+        const forumId = addChipBtn.getAttribute('data-forum-id');
+        const container = addChipBtn.parentElement;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'char-inline-input';
+        input.placeholder = 'Имя и Enter...';
+        
+        addChipBtn.replaceWith(input);
+        input.focus();
+
+        const commitInlineChar = () => {
+            const val = input.value.trim();
+            if (val) {
+                const forum = forums.find(f => f.id === forumId);
+                if (forum) {
+                    const updated = resolveAndLearnCharacters(forum.characters, val);
+                    forum.characters = updated.updatedForumChars;
+                    chrome.storage.local.set({ savedForums: forums });
+                }
+            }
+            renderForumsList();
+        };
+
+        input.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') {
+                ev.preventDefault();
+                input.blur();
+            } else if (ev.key === 'Escape') {
+                input.value = '';
+                input.blur();
+            }
+        });
+        input.addEventListener('blur', commitInlineChar, { once: true });
+        return;
+    }
+
+    // 3. Handle Edit / Delete Forum buttons
     const btn = e.target.closest('button');
     if (!btn) return;
 
@@ -137,7 +218,6 @@ forumsList.addEventListener('click', (e) => {
         const forumToDelete = forums.find(f => f.id === id);
         if (!forumToDelete) return;
 
-        // Open custom single-step confirmation modal
         pendingDeleteForumId = id;
         document.getElementById('delete-forum-title').textContent = `Удалить «${forumToDelete.name}»?`;
         deleteForumModal.style.display = 'flex';
@@ -147,7 +227,7 @@ forumsList.addEventListener('click', (e) => {
         const forum = forums.find(f => f.id === id);
         inputName.value = forum.name;
         inputUrl.value = forum.url;
-        inputChars.value = forum.characters || '';
+        inputChars.value = getForumChars(forum).join(', ');
         
         editingId = id;
         btnAddForum.textContent = 'Сохранить изменения';
@@ -243,7 +323,8 @@ function renderKanbanColumns() {
         col.className = 'column';
 
         const safeName = escapeHTML(forum.name);
-        const safeChars = escapeHTML(forum.characters);
+        const charList = getForumChars(forum);
+        const safeChars = escapeHTML(charList.join(', '));
         const safeUrl = escapeHTML(forum.url);
         
         let charsHtml = safeChars 
@@ -290,11 +371,13 @@ function loadAndRenderTasks() {
         // --- DASHBOARD SUMMARY ---
         const turnsCount = activeTasks.filter(t => t.type === 'turn').length;
         const waitsCount = activeTasks.filter(t => t.type === 'wait').length;
+        const totalCharsCount = forums.reduce((sum, f) => sum + getForumChars(f).length, 0);
         
         const summaryEl = document.getElementById('dashboard-summary');
         if (summaryEl) {
             summaryEl.innerHTML = 
                 `Активных форумов: <span style="color: var(--accent); font-weight: 600;">${forums.length}</span> &nbsp;•&nbsp; ` +
+                `Персонажей: <span style="color: var(--accent); font-weight: 600;">${totalCharsCount}</span> &nbsp;•&nbsp; ` +
                 `Мой ход: <span style="color: var(--accent); font-weight: 600;">${turnsCount}</span> &nbsp;•&nbsp; ` +
                 `Жду ответа: <span style="color: var(--accent); font-weight: 600;">${waitsCount}</span>`;
         }
@@ -613,17 +696,56 @@ function openEditModal(taskId) {
 
         currentEditingTaskId = taskId;
         
+        const charInput = document.getElementById('edit-task-char');
         document.getElementById('edit-task-title').value = task.title || '';
-        document.getElementById('edit-task-char').value = task.tag || '';
+        charInput.value = task.tag || '';
         document.getElementById('edit-task-type').value = task.type || 'wait';
         document.getElementById('edit-task-note').value = task.note || '';
         
-        // Failsafe date parsing
         if (task.date) {
             document.getElementById('edit-task-date').value = task.date.split('T')[0];
         } else {
             document.getElementById('edit-task-date').value = new Date().toISOString().split('T')[0];
         }
+
+        // Render clickable character pills for this task's forum
+        const pillsContainer = document.getElementById('edit-task-char-pills');
+        pillsContainer.innerHTML = '';
+        const forum = forums.find(f => f.id === task.forumId);
+        const forumChars = forum ? getForumChars(forum) : [];
+
+        const syncPillsActiveState = () => {
+            const currentNames = charInput.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+            pillsContainer.querySelectorAll('.char-pill').forEach(pill => {
+                const pillName = pill.getAttribute('data-char').toLowerCase();
+                pill.classList.toggle('active', currentNames.includes(pillName));
+            });
+        };
+
+        forumChars.forEach(c => {
+            const pill = document.createElement('span');
+            pill.className = 'char-pill';
+            pill.setAttribute('data-char', c);
+            pill.textContent = c;
+            pill.title = 'Клик — выбрать персонажа (Ctrl+Клик — выбрать нескольких)';
+            pill.addEventListener('click', (ev) => {
+                if (ev.ctrlKey || ev.metaKey || ev.shiftKey) {
+                    // Multi-select toggle for shared tasks/dailies
+                    const existing = charInput.value.split(',').map(s => s.trim()).filter(Boolean);
+                    const idx = existing.findIndex(x => x.toLowerCase() === c.toLowerCase());
+                    if (idx > -1) existing.splice(idx, 1);
+                    else existing.push(c);
+                    charInput.value = existing.join(', ');
+                } else {
+                    charInput.value = c;
+                }
+                syncPillsActiveState();
+            });
+            pillsContainer.appendChild(pill);
+        });
+
+        charInput.oninput = syncPillsActiveState;
+        syncPillsActiveState();
 
         editModal.style.display = 'flex';
     });
@@ -667,8 +789,21 @@ document.getElementById('btn-save-task-edit').addEventListener('click', () => {
                 finalDateStr = `${rawDate}T${timeToUse}`;
             }
 
+            const rawCharInput = document.getElementById('edit-task-char').value;
+            const taskForum = forums.find(f => f.id === tasks[taskIndex].forumId);
+            let finalCharTag = rawCharInput.trim();
+
+            if (taskForum) {
+                const resolved = resolveAndLearnCharacters(taskForum.characters, rawCharInput);
+                finalCharTag = resolved.formattedTag;
+                if (resolved.hasNewChars) {
+                    taskForum.characters = resolved.updatedForumChars;
+                    chrome.storage.local.set({ savedForums: forums });
+                }
+            }
+
             tasks[taskIndex].title = document.getElementById('edit-task-title').value;
-            tasks[taskIndex].tag = document.getElementById('edit-task-char').value;
+            tasks[taskIndex].tag = finalCharTag;
             tasks[taskIndex].type = newType;
             tasks[taskIndex].date = finalDateStr;
             tasks[taskIndex].note = document.getElementById('edit-task-note').value.trim();
@@ -769,6 +904,65 @@ function executeForumDeletion(keepArchive) {
     checkFinishButton();
 }
 
+/**
+ * Executes character deletion from a forum.
+ * @param {boolean} removeActiveTasks - True to also remove/clean active tasks for this character
+ */
+function executeCharDeletion(removeActiveTasks) {
+    if (!pendingDeleteChar) return;
+    const { forumId, charName } = pendingDeleteChar;
+    const forum = forums.find(f => f.id === forumId);
+    if (!forum) return;
+
+    // 1. Remove character from the forum's list
+    forum.characters = getForumChars(forum).filter(
+        c => c.toLowerCase() !== charName.toLowerCase()
+    );
+    chrome.storage.local.set({ savedForums: forums });
+
+    // 2. Optionally clean up active tasks associated with this character
+    if (removeActiveTasks) {
+        chrome.storage.local.get(['rpgTasks'], (result) => {
+            let tasks = result.rpgTasks || [];
+            const targetLower = charName.toLowerCase();
+
+            tasks = tasks.filter(t => {
+                // Never delete archived history or tasks from other forums
+                if (t.archived || t.forumId !== forumId || !t.tag) return true;
+
+                const taskChars = t.tag.split(',').map(s => s.trim()).filter(Boolean);
+                const hasTarget = taskChars.some(c => c.toLowerCase() === targetLower);
+                if (!hasTarget) return true;
+
+                // Filter out the deleted character
+                const remainingChars = taskChars.filter(c => c.toLowerCase() !== targetLower);
+                if (remainingChars.length > 0) {
+                    // Shared task with multiple characters: keep task, just update tag
+                    t.tag = remainingChars.join(', ');
+                    return true;
+                }
+                // Single-character active task: remove from board
+                return false;
+            });
+
+            chrome.storage.local.set({ rpgTasks: tasks });
+        });
+    }
+
+    closeDeleteCharModal();
+    renderForumsList();
+}
+
+function closeDeleteCharModal() {
+    deleteCharModal.style.display = 'none';
+    pendingDeleteChar = null;
+}
+
+document.getElementById('btn-char-delete-with-tasks').addEventListener('click', () => executeCharDeletion(true));
+document.getElementById('btn-char-delete-keep-tasks').addEventListener('click', () => executeCharDeletion(false));
+document.getElementById('btn-cancel-char-delete').addEventListener('click', closeDeleteCharModal);
+document.getElementById('btn-close-char-delete-modal').addEventListener('click', closeDeleteCharModal);
+
 // Modal button listeners
 document.getElementById('btn-delete-keep-archive').addEventListener('click', () => executeForumDeletion(true));
 document.getElementById('btn-delete-wipe-all').addEventListener('click', () => executeForumDeletion(false));
@@ -789,6 +983,7 @@ document.addEventListener('keydown', (e) => {
             editModal.style.display = 'none';
             currentEditingTaskId = null;
         }
+        if (deleteCharModal.style.display === 'flex') closeDeleteCharModal();
     }
 });
 
