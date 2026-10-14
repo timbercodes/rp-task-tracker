@@ -39,7 +39,7 @@ function injectUI(forum, tasks) {
 
     // Smart icon: Set initial smart icon based on task existence
     btn.innerHTML = existingTask ? ICON_EDIT_FAB : ICON_ADD_FAB;
-    btn.title = existingTask ? 'Редактировать задачу' : 'Добавить в трекер задач';
+    btn.title = existingTask ? 'Тема уже в трекере (редактировать)' : 'Добавить тему в трекер';
     document.body.appendChild(btn);
 
     // --- Create Modal Container ---
@@ -60,11 +60,13 @@ function injectUI(forum, tasks) {
     const charValue = existingTask ? existingTask.tag : defaultChar;
     const typeValue = existingTask ? existingTask.type : 'wait';
     const dateValue = (existingTask && existingTask.date) ? existingTask.date.split('T')[0] : today;
-    
+    const noteValue = (existingTask && existingTask.note) ? existingTask.note : '';
+
     // SANITIZE DATA BEFORE INJECTING INTO HTML (Fixing the XSS vulnerability)
     const safeTitleValue = escapeHTML(titleValue);
     const safeCharValue = escapeHTML(charValue);
     const safeForumName = escapeHTML(forum.name);
+    const safeNoteValue = escapeHTML(noteValue);
 
     const modalHeader = existingTask ? 'Редактировать задачу' : `Новая задача: ${safeForumName}`;
     const btnText = existingTask ? 'Сохранить изменения' : 'Сохранить';
@@ -91,6 +93,9 @@ function injectUI(forum, tasks) {
         <label style="font-size: 12px; color: #888;">Дата</label>
         <input type="date" id="rpt-date" value="${dateValue}">
         
+        <label style="font-size: 12px; color: #888;">Заметка к задаче (необязательно)</label>
+        <textarea id="rpt-note" rows="2" placeholder="О чём не забыть в посте...">${safeNoteValue}</textarea>
+
         <button id="rpt-save-btn">${btnText}</button>
     `;
     document.body.appendChild(modal);
@@ -114,9 +119,9 @@ function injectUI(forum, tasks) {
             
             document.getElementById('rpt-title').value = cleanTitle;
             document.getElementById('rpt-char').value = defaultChar;
+            document.getElementById('rpt-note').value = '';
         });
     }
-    // ==========================================    
 
     // Handle task creation and storage
     document.getElementById('rpt-save-btn').addEventListener('click', () => {
@@ -124,6 +129,7 @@ function injectUI(forum, tasks) {
         const char = document.getElementById('rpt-char').value;
         const type = document.getElementById('rpt-type').value;
         const rawDate = document.getElementById('rpt-date').value;
+        const note = document.getElementById('rpt-note').value.trim();
 
         if (!rawDate) return alert('Пожалуйста, выбери дату!');
 
@@ -156,6 +162,7 @@ function injectUI(forum, tasks) {
                     latestTasks[taskIndex].tag = char;
                     latestTasks[taskIndex].type = type;
                     latestTasks[taskIndex].date = finalDateStr;
+                    latestTasks[taskIndex].note = note;
                 }
             } else {
                 // Create new task object
@@ -167,6 +174,7 @@ function injectUI(forum, tasks) {
                     tag: char,
                     type: type,
                     date: finalDateStr,
+                    note: note,
                     completed: false,
                     archived: false
                 };
@@ -182,7 +190,7 @@ function injectUI(forum, tasks) {
                 // Reset button icon after 2 seconds
                 setTimeout(() => {
                     btn.innerHTML = ICON_EDIT_FAB; // Show edit icon
-                    btn.title = 'Редактировать задачу';
+                    btn.title = 'Тема уже в трекере (редактировать)';
                     document.getElementById('rpt-modal-header').textContent = 'Редактировать задачу';
                     document.getElementById('rpt-save-btn').textContent = 'Сохранить изменения';
                 }, 2000);

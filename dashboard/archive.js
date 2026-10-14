@@ -32,7 +32,7 @@ function loadArchive() {
         listContainer.innerHTML = '';
 
         if (archivedTasks.length === 0) {
-            listContainer.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 40px;">Архив пуст. Выполни задачу на доске, чтобы она появилась здесь!</p>';
+            listContainer.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 40px; line-height: 1.6;">В архиве пока тихо.<br>Когда ты сдашь первый пост или закроешь дедлайн, он появится здесь на память ✨</p>';
             return;
         }
 
@@ -99,7 +99,7 @@ function loadArchive() {
 
 function getTypeLabel(type) {
     switch(type) {
-        case 'turn': return 'Мой долг';
+        case 'turn': return 'Написанный пост';
         case 'wait': return 'Ожидание';
         case 'deadline': return 'Срочный дедлайн';
         default: return 'Задача';

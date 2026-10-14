@@ -23,7 +23,7 @@
                 <input type="text" id="forum-name" placeholder="Название форума (например, Example RPG)">
                 
                 <input type="text" id="forum-url" placeholder="Ссылка (например, example-rpg.rusff.me)">
-                <small class="hint">Нужно, чтобы расширение понимало, где показывать кнопку добавления долга.</small>
+                <small class="hint">Нужно, чтобы расширение знало, на каких сайтах включать кнопку трекера ✨</small>
                 
                 <input type="text" id="forum-chars" placeholder="Твои персонажи (через запятую, например: John Doe, Jane)">
                 
@@ -48,7 +48,7 @@
     <main id="kanban-view" class="view-container" style="display: none;">
         <header>
             <div>
-                <h1 style="line-height: 1;">Мои долги</h1>
+                <h1 style="line-height: 1;">Мой ролевой трекер</h1>
                 <div id="dashboard-summary" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;"></div>
             </div>
             <div style="display: flex; gap: 10px;">
@@ -67,18 +67,19 @@
     
     <!-- Task Edit Modal -->
     <div id="task-edit-modal" class="modal-overlay" style="display: none;">
-        <div class="onboarding-card" style="width: 350px; padding: 25px;">
-            <h3 style="margin-bottom: 15px;">Редактировать долг</h3>
+        <div class="onboarding-card" style="width: 360px; padding: 25px;">
+            <h3 style="margin-bottom: 15px;">Редактировать задачу</h3>
             <div class="form-group" style="gap: 10px;">
                 <input type="text" id="edit-task-title" placeholder="Название темы">
                 <input type="text" id="edit-task-char" placeholder="Персонаж">
                 <select id="edit-task-type" style="padding: 10px; background: var(--bg-color); color: white; border: 1px solid var(--border); border-radius: 6px;">
                     <option value="wait">Жду ответа</option>
-                    <option value="turn">Мой долг</option>
+                    <option value="turn">Мой ход</option>
                     <option value="daily">Ежедневная рутина</option>
                     <option value="deadline">Срочный дедлайн</option>
                 </select>
                 <input type="date" id="edit-task-date">
+                <textarea id="edit-task-note" rows="2" placeholder="Заметка к задаче (о чём не забыть)..." style="font-size: 0.9rem; padding: 10px;"></textarea>
                 
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
                     <button id="btn-cancel-edit" class="secondary-btn" style="flex: 1;">Отмена</button>
@@ -93,11 +94,11 @@
         <div class="onboarding-card" style="width: 380px; padding: 25px; position: relative;">
             <span id="btn-close-delete-modal" style="position: absolute; top: 15px; right: 20px; cursor: pointer; color: var(--text-muted); font-size: 1.4rem; line-height: 1;" title="Закрыть (Esc)">&times;</span>
             <h3 id="delete-forum-title" style="margin-bottom: 10px; padding-right: 20px;">Удалить форум?</h3>
-            <p style="font-size: 0.9rem; margin-bottom: 20px;">Активные задачи с доски будут удалены. Что сделать с завершенной историей в Архиве?</p>
+            <p style="font-size: 0.9rem; margin-bottom: 20px;">Активные карточки этого форума уйдут с доски. А что сделаем с историей твоих постов в Архиве?</p>
             
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <button id="btn-delete-keep-archive" class="primary-btn">Оставить историю в Архиве</button>
-                <button id="btn-delete-wipe-all" class="secondary-btn" style="border-color: var(--red); color: var(--red);">Удалить всё подчистую</button>
+                <button id="btn-delete-wipe-all" class="secondary-btn" style="border-color: var(--red); color: var(--red);">Удалить все подчистую</button>
                 <button id="btn-cancel-delete-forum" class="secondary-btn" style="margin-top: 5px;">Отмена</button>
             </div>
         </div>

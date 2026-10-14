@@ -294,9 +294,9 @@ function loadAndRenderTasks() {
         const summaryEl = document.getElementById('dashboard-summary');
         if (summaryEl) {
             summaryEl.innerHTML = 
-                `Играю на форумах: <span style="color: var(--accent); font-weight: 600;">${forums.length}</span> &nbsp;•&nbsp; ` +
-                `Должен постов: <span style="color: var(--accent); font-weight: 600;">${turnsCount}</span> &nbsp;•&nbsp; ` +
-                `Жду ответов: <span style="color: var(--accent); font-weight: 600;">${waitsCount}</span>`;
+                `Активных форумов: <span style="color: var(--accent); font-weight: 600;">${forums.length}</span> &nbsp;•&nbsp; ` +
+                `Мой ход: <span style="color: var(--accent); font-weight: 600;">${turnsCount}</span> &nbsp;•&nbsp; ` +
+                `Жду ответа: <span style="color: var(--accent); font-weight: 600;">${waitsCount}</span>`;
         }
 
         // --- SMART PRIORITY SORTING ---
@@ -351,33 +351,41 @@ function loadAndRenderTasks() {
             const safeTitle = escapeHTML(task.title);
             const safeUrl = escapeHTML(task.url);
             const safeTag = escapeHTML(task.tag);
+            const safeNote = escapeHTML(task.note);
 
             let titleHtml = task.url ? `<a href="${safeUrl}" target="_blank">${safeTitle}</a>` : safeTitle;
             let timerHtml = getTimerHtml(task.type, task.date, now, task);
             let tagHtml = task.tag ? `<span class="tag">${safeTag}</span>` : '';
+            let noteHtml = safeNote ? `<div class="task-note">${safeNote}</div>` : '';
 
             // --- SMART PING-PONG BUTTON ---
             let pingPongBtnHtml = '';
             if (task.type === 'turn' || task.type === 'wait') {
                 const ppTitle = task.type === 'turn' 
-                    ? 'Пост сдан! Передать ход (в Ожидание + запись в Архив)' 
-                    : 'Ответ получен! Взять в работу (Мой долг)';
+                    ? 'Пост написан! Передать ход соигроку (пост сохранится в Архив)' 
+                    : 'Ответ получен! Забрать ход себе';
                 pingPongBtnHtml = `<button class="btn-pingpong-task" data-task-id="${task.id}" title="${ppTitle}">${ICON_PINGPONG}</button>`;
             }
 
+            // --- SMART COMPLETE BUTTON TOOLTIP ---
+            let completeTitle = 'Завершить эпизод';
+            if (task.type === 'daily') completeTitle = 'Отметить на сегодня';
+            if (task.type === 'deadline') completeTitle = 'Закрыть дедлайн (в Архив)';
+
             card.innerHTML = `
                 <div class="task-header">
-                    <div>
+                    <div style="flex: 1; padding-right: 10px;">
                         <div class="task-title">${titleHtml}</div>
                         <div class="task-meta" style="margin-top: 5px;">${tagHtml}</div>
+                        ${noteHtml}
                         <div class="task-timer" style="color: ${task.completed ? 'inherit' : 'var(--text-main)'}">${timerHtml}</div>
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 15px;">
                         <div class="task-actions">
                             ${pingPongBtnHtml}
-                            <button class="btn-complete-task" data-task-id="${task.id}" title="Выполнено/Завершить эпизод">${ICON_CHECK}</button>
+                            <button class="btn-complete-task" data-task-id="${task.id}" title="${completeTitle}">${ICON_CHECK}</button>
                             <button class="btn-edit-task" data-task-id="${task.id}" title="Редактировать">${ICON_EDIT}</button>
-                            <button class="btn-delete-task" data-task-id="${task.id}" title="Удалить">${ICON_TRASH}</button>
+                            <button class="btn-delete-task" data-task-id="${task.id}" title="Убрать с доски">${ICON_TRASH}</button>
                         </div>
                     </div>
                 </div>
@@ -455,7 +463,7 @@ function getTimerHtml(type, date, now, task) {
     // For wait/turn we calculate how much time has passed. For deadline - how much is left.
     let diff = (type === 'wait' || type === 'turn') ? (timeReference - target) : (target - timeReference);
     
-    if (type === 'deadline' && diff < 0) return '<span style="color: var(--red);">Просрочено!</span>';
+    if (type === 'deadline' && diff < 0) return '<span style="color: var(--red);">Дедлайн горит!</span>';
     
     if (diff < 0) diff = 0;
 
@@ -463,7 +471,7 @@ function getTimerHtml(type, date, now, task) {
     const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     
     if (type === 'wait') return `Жду ответа: ${d}д ${h}ч`;
-    if (type === 'turn') return `Мой долг: ${d}д ${h}ч`;
+    if (type === 'turn') return `Мой ход: ${d}д ${h}ч`;
     if (type === 'deadline') return `Осталось: ${d}д ${h}ч`;
     
     return '';
@@ -474,7 +482,7 @@ function getTimerHtml(type, date, now, task) {
  * @param {string} id - Task identifier
  */
 function deleteTask(id) {
-    if (confirm('Точно удалить этот долг?')) {
+    if (confirm('Убрать эту задачу с доски? (В архив она не попадет)')) {
         chrome.storage.local.get(['rpgTasks'], (result) => {
             let tasks = result.rpgTasks || [];
             tasks = tasks.filter(t => t.id !== id);
@@ -608,6 +616,7 @@ function openEditModal(taskId) {
         document.getElementById('edit-task-title').value = task.title || '';
         document.getElementById('edit-task-char').value = task.tag || '';
         document.getElementById('edit-task-type').value = task.type || 'wait';
+        document.getElementById('edit-task-note').value = task.note || '';
         
         // Failsafe date parsing
         if (task.date) {
@@ -662,6 +671,7 @@ document.getElementById('btn-save-task-edit').addEventListener('click', () => {
             tasks[taskIndex].tag = document.getElementById('edit-task-char').value;
             tasks[taskIndex].type = newType;
             tasks[taskIndex].date = finalDateStr;
+            tasks[taskIndex].note = document.getElementById('edit-task-note').value.trim();
 
             chrome.storage.local.set({ rpgTasks: tasks }, () => {
                 editModal.style.display = 'none';

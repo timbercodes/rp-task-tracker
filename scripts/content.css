@@ -78,7 +78,8 @@
 
 /* Form inputs */
 #rpt-modal input, 
-#rpt-modal select {
+#rpt-modal select,
+#rpt-modal textarea {
     width: 100%;
     box-sizing: border-box;
     padding: 8px;
@@ -89,6 +90,7 @@
     font-family: inherit; /* Override forum typography */
     font-size: 13px;
     appearance: auto; /* Attempt to restore native browser UI */
+    resize: vertical;
 }
 
 /* Save button */
