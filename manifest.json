@@ -2,9 +2,21 @@
   "manifest_version": 3,
   "name": "RP Task Tracker",
   "version": "1.2.0",
-  "description": "Легкий трекер долгов и дедлайнов для форумных ролевых игр.",
+  "description": "Удобный трекер постов, очередности ходов и дедлайнов для форумных ролевых игр.",
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
   "action": {
-    "default_title": "Открыть дашборд"
+    "default_title": "Открыть дашборд",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "32": "assets/icon32.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    }
   },
   "background": {
     "service_worker": "scripts/background.js"
