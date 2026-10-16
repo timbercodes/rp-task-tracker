@@ -92,9 +92,12 @@ function loadArchive() {
                         ${tagHtml ? `<span>•</span> ${tagHtml}` : ''}
                     </div>
                 </div>
-                <div class="archive-stats">
-                    ${timeTakenHtml}
-                    <div class="archive-finish-date">Завершено: ${finishDate}</div>
+                <div class="archive-right">
+                    <div class="archive-stats">
+                        ${timeTakenHtml}
+                        <div class="archive-finish-date">Завершено: ${finishDate}</div>
+                    </div>
+                    <button class="btn-delete-archive" data-task-id="${task.id}" title="Удалить запись из архива">${ICON_TRASH}</button>
                 </div>
             `;
 
@@ -116,5 +119,25 @@ function getTypeLabel(type) {
         default: return 'Задача';
     }
 }
+
+/**
+ * Delegated click listener to delete individual records from the Archive.
+ */
+document.getElementById('archive-list').addEventListener('click', (e) => {
+    const deleteBtn = e.target.closest('.btn-delete-archive');
+    if (!deleteBtn) return;
+
+    const taskId = deleteBtn.getAttribute('data-task-id');
+    if (!taskId) return;
+
+    if (confirm('Удалить эту запись из Архива навсегда?')) {
+        chrome.storage.local.get(['rpgTasks'], (result) => {
+            const updatedTasks = (result.rpgTasks || []).filter(t => t.id !== taskId);
+            chrome.storage.local.set({ rpgTasks: updatedTasks }, () => {
+                loadArchive();
+            });
+        });
+    }
+});
 
 })();

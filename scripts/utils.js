@@ -36,6 +36,19 @@ function escapeHTML(str) {
     }[tag]));
 }
 
+/**
+ * Normalizes a forum topic URL for comparison by stripping post anchors (#p123)
+ * and pagination parameters (&p=2) without mutating the original stored URL.
+ * @param {string} url - Raw topic URL.
+ * @returns {string} Clean base topic URL for matching.
+ */
+function getCleanTopicUrl(url) {
+    if (!url) return '';
+    return String(url)
+        .split('#')[0]
+        .replace(/&p=\d+/g, '');
+}
+
 // ==========================================================================
 // 3. Date & Time Helpers
 // ==========================================================================
@@ -225,4 +238,81 @@ function renderCharacterPills({
 
     inputEl.oninput = syncActiveState;
     syncActiveState();
+}
+
+// ==========================================================================
+// 5. Shared Task State Actions (Used by Dashboard & Content Script)
+// ==========================================================================
+
+/**
+ * Completes a task by ID according to its type:
+ * - 'daily': toggles completed state on the board until midnight reset.
+ * - 'wait': removes the waiting card from the board without archiving.
+ * - 'turn' / 'deadline': moves the task to the Archive with a completion timestamp.
+ * @param {string} taskId - Target task ID.
+ * @param {Function} [onComplete] - Optional callback receiving the updated task (or null if removed/archived).
+ */
+function completeTaskById(taskId, onComplete) {
+    chrome.storage.local.get(['rpgTasks'], (result) => {
+        const tasks = result.rpgTasks || [];
+        const taskIndex = tasks.findIndex(t => t.id === taskId);
+        if (taskIndex === -1) return;
+
+        const task = tasks[taskIndex];
+        let activeTaskAfter = null;
+
+        if (task.type === 'daily') {
+            task.completed = !task.completed;
+            activeTaskAfter = task;
+        } else if (task.type === 'wait') {
+            tasks.splice(taskIndex, 1);
+        } else {
+            task.archived = true;
+            task.completed = true;
+            task.completionDate = new Date().toISOString();
+        }
+
+        chrome.storage.local.set({ rpgTasks: tasks }, () => {
+            if (onComplete) onComplete(activeTaskAfter);
+        });
+    });
+}
+
+/**
+ * Toggles a task between 'turn' and 'wait' states (Ping-Pong).
+ * When flipping from 'turn' to 'wait', saves a completed snapshot of the post into the Archive.
+ * @param {string} taskId - Target task ID.
+ * @param {Function} [onComplete] - Optional callback receiving the updated active task.
+ */
+function pingPongTaskById(taskId, onComplete) {
+    chrome.storage.local.get(['rpgTasks'], (result) => {
+        const tasks = result.rpgTasks || [];
+        const taskIndex = tasks.findIndex(t => t.id === taskId);
+        if (taskIndex === -1) return;
+
+        const task = tasks[taskIndex];
+        const nowObj = new Date();
+        const freshDateStr = getLocalTimestampString(nowObj);
+
+        if (task.type === 'turn') {
+            const archivedCopy = {
+                ...task,
+                id: `${Date.now()}_arch`,
+                completed: true,
+                archived: true,
+                completionDate: nowObj.toISOString()
+            };
+            tasks.push(archivedCopy);
+
+            task.type = 'wait';
+            task.date = freshDateStr;
+        } else if (task.type === 'wait') {
+            task.type = 'turn';
+            task.date = freshDateStr;
+        }
+
+        chrome.storage.local.set({ rpgTasks: tasks }, () => {
+            if (onComplete) onComplete(task);
+        });
+    });
 }

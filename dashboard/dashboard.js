@@ -16,6 +16,8 @@ let editingId = null;
 let currentEditingTaskId = null;
 let pendingDeleteForumId = null;
 let pendingDeleteChar = null; // { forumId, charName }
+let activeCharFilter = null; // null means "All characters"
+const charFilterBar = document.getElementById('char-filter-bar');
 
 // Views & Containers
 const onboardingView = document.getElementById('onboarding-view');
@@ -393,6 +395,59 @@ function getUrgencyScore(type, targetTime, now) {
 }
 
 /**
+ * Renders the character filter bar above the board based on all configured characters.
+ */
+function renderCharFilterBar() {
+    if (!charFilterBar) return;
+
+    const allChars = [];
+    forums.forEach(f => {
+        getForumChars(f).forEach(c => {
+            if (!allChars.some(existing => existing.toLowerCase() === c.toLowerCase())) {
+                allChars.push(c);
+            }
+        });
+    });
+
+    if (allChars.length === 0) {
+        charFilterBar.classList.add('hidden');
+        activeCharFilter = null;
+        return;
+    }
+
+    // Reset filter if the selected character was deleted
+    if (activeCharFilter && !allChars.some(c => c.toLowerCase() === activeCharFilter.toLowerCase())) {
+        activeCharFilter = null;
+    }
+
+    charFilterBar.classList.remove('hidden');
+    charFilterBar.innerHTML = `<span class="char-filter-label">Фильтр по ролям:</span>`;
+
+    const allBtn = document.createElement('button');
+    allBtn.type = 'button';
+    allBtn.className = `char-filter-btn ${!activeCharFilter ? 'active' : ''}`;
+    allBtn.textContent = 'Все';
+    allBtn.addEventListener('click', () => {
+        activeCharFilter = null;
+        loadAndRenderTasks();
+    });
+    charFilterBar.appendChild(allBtn);
+
+    allChars.forEach(charName => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const isActive = activeCharFilter && activeCharFilter.toLowerCase() === charName.toLowerCase();
+        btn.className = `char-filter-btn ${isActive ? 'active' : ''}`;
+        btn.textContent = charName;
+        btn.addEventListener('click', () => {
+            activeCharFilter = isActive ? null : charName;
+            loadAndRenderTasks();
+        });
+        charFilterBar.appendChild(btn);
+    });
+}
+
+/**
  * Fetches tasks from storage, resets dailies if needed, updates the header summary,
  * sorts active tasks by priority, and renders task cards into forum columns.
  */
@@ -423,8 +478,18 @@ function loadAndRenderTasks() {
                 `Жду ответа: <span class="text-accent">${waitsCount}</span>`;
         }
 
+        renderCharFilterBar();
+
+        const filteredTasks = activeCharFilter
+            ? activeTasks.filter(t => {
+                if (!t.tag) return false;
+                const taskChars = t.tag.split(',').map(s => s.trim().toLowerCase());
+                return taskChars.includes(activeCharFilter.toLowerCase());
+            })
+            : activeTasks;
+
         // Sort active tasks: incomplete first, then by urgency score
-        activeTasks.sort((a, b) => {
+        filteredTasks.sort((a, b) => {
             if (a.completed && !b.completed) return 1;
             if (!a.completed && b.completed) return -1;
             if (a.completed && b.completed) return 0;
@@ -440,7 +505,7 @@ function loadAndRenderTasks() {
         });
 
         // Render task cards
-        activeTasks.forEach(task => {
+        filteredTasks.forEach(task => {
             const column = document.getElementById(`list-${task.forumId}`);
             if (!column) return;
 
@@ -591,26 +656,7 @@ function deleteTask(id) {
  * @param {string} id - Task identifier.
  */
 function handleCompleteAction(id) {
-    chrome.storage.local.get(['rpgTasks'], (result) => {
-        const tasks = result.rpgTasks || [];
-        const taskIndex = tasks.findIndex(t => t.id === id);
-
-        if (taskIndex > -1) {
-            const task = tasks[taskIndex];
-
-            if (task.type === 'daily') {
-                task.completed = !task.completed;
-            } else if (task.type === 'wait') {
-                tasks.splice(taskIndex, 1);
-            } else {
-                task.archived = true;
-                task.completed = true;
-                task.completionDate = new Date().toISOString();
-            }
-
-            chrome.storage.local.set({ rpgTasks: tasks });
-        }
-    });
+    completeTaskById(id);
 }
 
 /**
@@ -619,35 +665,7 @@ function handleCompleteAction(id) {
  * @param {string} id - Task identifier.
  */
 function handlePingPongAction(id) {
-    chrome.storage.local.get(['rpgTasks'], (result) => {
-        const tasks = result.rpgTasks || [];
-        const taskIndex = tasks.findIndex(t => t.id === id);
-
-        if (taskIndex > -1) {
-            const task = tasks[taskIndex];
-            const nowObj = new Date();
-            const freshDateStr = getLocalTimestampString(nowObj);
-
-            if (task.type === 'turn') {
-                const archivedCopy = {
-                    ...task,
-                    id: `${Date.now()}_arch`,
-                    completed: true,
-                    archived: true,
-                    completionDate: nowObj.toISOString()
-                };
-                tasks.push(archivedCopy);
-
-                task.type = 'wait';
-                task.date = freshDateStr;
-            } else if (task.type === 'wait') {
-                task.type = 'turn';
-                task.date = freshDateStr;
-            }
-
-            chrome.storage.local.set({ rpgTasks: tasks });
-        }
-    });
+    pingPongTaskById(id);
 }
 
 /**

@@ -187,6 +187,45 @@ input.char-inline-input {
 #board-view header h1 { line-height: 1; }
 .dashboard-summary { font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; }
 .header-actions { display: flex; gap: 10px; }
+
+.char-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 40px 0 40px;
+}
+
+.char-filter-label {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-right: 4px;
+}
+
+.char-filter-btn {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 5px 12px;
+    border-radius: 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.char-filter-btn:hover {
+    border-color: var(--text-main);
+    color: var(--text-main);
+    opacity: 1;
+}
+
+.char-filter-btn.active {
+    background-color: rgba(100, 255, 218, 0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
 .board { display: flex; gap: 20px; padding: 30px 40px; overflow-x: auto; }
 .column { background-color: var(--surface); border-radius: 12px; padding: 20px; min-width: 300px; min-height: 70vh; flex: 1; border: 1px solid var(--border); }
 .column h2 { text-align: center; font-size: 1.2rem; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
@@ -330,6 +369,15 @@ input.char-inline-input {
 .task-actions {
     display: flex;
     gap: 10px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+.task-card:hover .task-actions,
+.task-card:focus-within .task-actions {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .task-actions button {
@@ -524,4 +572,28 @@ a.archive-title:hover {
     font-size: 0.85rem;
     color: var(--text-muted);
     margin-top: 5px;
+}
+
+.archive-right {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.btn-delete-archive {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 4px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.archive-card:hover .btn-delete-archive {
+    opacity: 1;
+}
+
+.btn-delete-archive:hover {
+    color: var(--red);
 }

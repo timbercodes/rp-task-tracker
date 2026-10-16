@@ -29,11 +29,19 @@
     align-items: center;
     justify-content: center;
     transition: transform 0.2s ease, background-color 0.2s ease;
+    user-select: none;
+    touch-action: none;
 }
 
 #rpt-floating-btn:hover {
     background-color: #334155; 
     transform: scale(1.05);
+}
+
+#rpt-floating-btn.rpt-dragging {
+    transition: none;
+    cursor: grabbing;
+    transform: scale(1.08);
 }
 
 /* ==========================================================================
@@ -169,4 +177,34 @@
 }
 #rpt-modal button#rpt-save-btn:hover {
     background-color: #52e0c4;
+}
+
+/* Quick action buttons (Ping-Pong & Complete) inside FAB modal */
+#rpt-modal .rpt-quick-actions {
+    display: flex;
+    gap: 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #333333;
+}
+
+#rpt-modal .rpt-quick-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background-color: #121212;
+    color: #e0e0e0;
+    border: 1px solid #333333;
+    border-radius: 4px;
+    padding: 7px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+#rpt-modal .rpt-quick-btn:hover {
+    border-color: #64ffda;
+    color: #64ffda;
 }
