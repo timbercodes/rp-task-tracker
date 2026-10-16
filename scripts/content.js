@@ -1,17 +1,16 @@
 /**
  * RP Task Tracker - Content Script
- * Injected into active web pages. Responsible for parsing page data,
- * injecting the floating action button (FAB), and handling task creation/editing directly from the forum.
+ * Injected into matched forum pages. Responsible for parsing topic metadata,
+ * rendering the Floating Action Button (FAB), and handling in-page task creation/editing.
  * Note: Relies on scripts/utils.js being injected first.
  */
 
 (() => {
 
-// 1. Fetch extension configuration and task list on page load
+// Fetch extension configuration and task list on page load
 chrome.storage.local.get(['savedForums', 'rpgTasks'], (result) => {
     const forums = result.savedForums || [];
     let tasks = result.rpgTasks || [];
-
     const currentHost = window.location.hostname;
 
     // Check if the current website matches any of the user's saved forums
@@ -21,6 +20,25 @@ chrome.storage.local.get(['savedForums', 'rpgTasks'], (result) => {
         injectUI(matchedForum, tasks);
     }
 });
+
+/**
+ * Detects the active character name from Rusff/MyBB page scripts (UserLogin)
+ * or falls back to the first configured character for the forum.
+ * @param {Array<string>} forumChars - Configured character names for the current forum.
+ * @returns {string} Detected or default character name.
+ */
+function detectDefaultCharacter(forumChars) {
+    const loginMatch = document.documentElement.innerHTML.match(/UserLogin\s*=\s*['"]([^'"]+)['"]/);
+    const rawPageLogin = loginMatch ? loginMatch[1].trim() : '';
+    const ignoredLogins = ['гость', 'guest', 'реклама', 'pr'];
+    const isGuestOrSystem = !rawPageLogin || ignoredLogins.includes(rawPageLogin.toLowerCase());
+
+    if (!isGuestOrSystem) {
+        const matchedSaved = forumChars.find(c => c.toLowerCase() === rawPageLogin.toLowerCase());
+        return matchedSaved || rawPageLogin;
+    }
+    return forumChars[0] || '';
+}
 
 /**
  * Injects the Floating Action Button (FAB) and Task Modal into the target DOM.
@@ -33,40 +51,20 @@ function injectUI(forum, tasks) {
     // Look for existing task for this forum and URL
     let existingTask = tasks.find(t => t.url === currentUrl && !t.completed && !t.archived);
 
-    // --- Create Floating Button ---
+    // --- Create Floating Action Button ---
     const btn = document.createElement('button');
     btn.id = 'rpt-floating-btn';
-
-    // Smart icon: Set initial smart icon based on task existence
     btn.innerHTML = existingTask ? ICON_EDIT_FAB : ICON_ADD_FAB;
     btn.title = existingTask ? 'Тема уже в трекере (редактировать)' : 'Добавить тему в трекер';
     document.body.appendChild(btn);
 
-    // --- Create Modal Container ---
+    // --- Prepare Modal Initial State ---
     const modal = document.createElement('div');
     modal.id = 'rpt-modal';
     
-    // Parse the forum topic title, removing standard trailing elements
-    let cleanTitle = document.title.split(' - ')[0].trim();
-    
-    // Extract saved characters array for this forum
+    const cleanTitle = document.title.split(' - ')[0].trim();
     let forumChars = getForumChars(forum);
-
-    // Smart UserLogin detection from forum HTML (Rusff / MyBB)
-    const loginMatch = document.documentElement.innerHTML.match(/UserLogin\s*=\s*['"]([^'"]+)['"]/);
-    const rawPageLogin = loginMatch ? loginMatch[1].trim() : '';
-    const isGuest = !rawPageLogin || ['гость', 'guest', 'реклама', 'pr'].includes(rawPageLogin.toLowerCase());
-
-    let defaultChar = '';
-    if (!isGuest) {
-        // Check if page login matches a saved character (case-insensitive)
-        const matchedSaved = forumChars.find(c => c.toLowerCase() === rawPageLogin.toLowerCase());
-        defaultChar = matchedSaved || rawPageLogin;
-    } else {
-        defaultChar = forumChars[0] || '';
-    }
-
-    // Get current date for default value in YYYY-MM-DD format
+    const defaultChar = detectDefaultCharacter(forumChars);
     const today = new Date().toISOString().split('T')[0];
 
     // If task exists — use data from memory, otherwise parse from page
@@ -84,31 +82,36 @@ function injectUI(forum, tasks) {
 
     const modalHeader = existingTask ? 'Редактировать задачу' : `Новая задача: ${safeForumName}`;
     const btnText = existingTask ? 'Сохранить изменения' : 'Сохранить';
-
-    // Build Modal HTML
+    const addNewLinkHtml = existingTask
+        ? `<div id="rpt-add-new-instead">+ добавить ещё одну задачу для этой темы</div>`
+        : '';
+    
+    
+    // --- Build Modal DOM ---
     modal.innerHTML = `
         <span class="rpt-close" id="rpt-close-btn">&times;</span>
-        <h4 id="rpt-modal-header" style="margin: 0; color: #64ffda; font-size: 16px; padding-bottom: 10px;">${modalHeader}</h4>${existingTask ? `<div id="rpt-add-new-instead" style="font-size: 11px; color: #888; cursor: pointer; text-decoration: underline; margin-bottom: 10px;">+ или добавить как новую задачу?</div>` : ''}
+        <h4 id="rpt-modal-header">${modalHeader}</h4>
+        ${addNewLinkHtml}
         
-        <label style="font-size: 12px; color: #888;">Название темы</label>
+        <label class="rpt-label" for="rpt-title">Название темы</label>
         <input type="text" id="rpt-title" value="${safeTitleValue}">
         
-        <label style="font-size: 12px; color: #888;">Персонаж</label>
+        <label class="rpt-label" for="rpt-char">Персонаж</label>
         <input type="text" id="rpt-char" value="${safeCharValue}">
         <div id="rpt-char-pills" class="rpt-char-pills"></div>
         
-        <label style="font-size: 12px; color: #888;">Тип задачи</label>
+        <label class="rpt-label" for="rpt-type">Тип задачи</label>
         <select id="rpt-type">
             <option value="wait" ${typeValue === 'wait' ? 'selected' : ''}>Жду ответа</option>
-            <option value="turn" ${typeValue === 'turn' ? 'selected' : ''}>Мой долг</option>
+            <option value="turn" ${typeValue === 'turn' ? 'selected' : ''}>Мой ход</option>
             <option value="daily" ${typeValue === 'daily' ? 'selected' : ''}>Ежедневная рутина</option>
             <option value="deadline" ${typeValue === 'deadline' ? 'selected' : ''}>Срочный дедлайн</option>
         </select>
         
-        <label style="font-size: 12px; color: #888;">Дата</label>
+        <label class="rpt-label" for="rpt-date">Дата</label>
         <input type="date" id="rpt-date" value="${dateValue}">
         
-        <label style="font-size: 12px; color: #888;">Заметка к задаче (необязательно)</label>
+        <label class="rpt-label" for="rpt-note">Заметка к задаче (необязательно)</label>
         <textarea id="rpt-note" rows="2" placeholder="О чём не забыть в посте...">${safeNoteValue}</textarea>
 
         <button id="rpt-save-btn">${btnText}</button>
@@ -118,96 +121,57 @@ function injectUI(forum, tasks) {
     const charInputEl = document.getElementById('rpt-char');
     const pillsContainerEl = document.getElementById('rpt-char-pills');
 
-    function renderContentCharPills() {
-        pillsContainerEl.innerHTML = '';
-        if (forumChars.length === 0) {
-            pillsContainerEl.style.display = 'none';
-            return;
-        }
-        pillsContainerEl.style.display = 'flex';
-
-        const currentNames = charInputEl.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-
-        forumChars.forEach(c => {
-            const pill = document.createElement('span');
-            pill.className = 'rpt-char-pill' + (currentNames.includes(c.toLowerCase()) ? ' rpt-pill-active' : '');
-            pill.textContent = c;
-            pill.title = 'Клик — выбрать (Ctrl+Клик — выбрать нескольких)';
-            pill.addEventListener('click', (ev) => {
-                if (ev.ctrlKey || ev.metaKey || ev.shiftKey) {
-                    const existing = charInputEl.value.split(',').map(s => s.trim()).filter(Boolean);
-                    const idx = existing.findIndex(x => x.toLowerCase() === c.toLowerCase());
-                    if (idx > -1) existing.splice(idx, 1);
-                    else existing.push(c);
-                    charInputEl.value = existing.join(', ');
-                } else {
-                    charInputEl.value = c;
-                }
-                renderContentCharPills();
-            });
-            pillsContainerEl.appendChild(pill);
+    const refreshCharPills = () => {
+        renderCharacterPills({
+            containerEl: pillsContainerEl,
+            inputEl: charInputEl,
+            characters: forumChars,
+            pillClass: 'rpt-char-pill',
+            activeClass: 'rpt-pill-active',
+            hiddenClass: 'rpt-hidden'
         });
-    }
+    };
+    refreshCharPills();
 
-    charInputEl.addEventListener('input', renderContentCharPills);
-    renderContentCharPills();
-
-    // --- Event Listeners ---
-    
+    // --- Bind Event Listeners ---
     // Toggle modal visibility
     btn.addEventListener('click', () => modal.classList.toggle('rpt-active'));
-
     // Close modal via 'X' button
     document.getElementById('rpt-close-btn').addEventListener('click', () => modal.classList.remove('rpt-active'));
 
     // Handle "Add as new task" option if editing an existing task
     if (existingTask) {
         document.getElementById('rpt-add-new-instead').addEventListener('click', (e) => {
-            existingTask = null; 
-            
+            existingTask = null;
             document.getElementById('rpt-modal-header').textContent = `Новая задача: ${safeForumName}`;
             document.getElementById('rpt-save-btn').textContent = 'Сохранить';
-            e.target.style.display = 'none';
-            
+            e.target.classList.add('rpt-hidden');
+
             document.getElementById('rpt-title').value = cleanTitle;
-            document.getElementById('rpt-char').value = defaultChar;
+            charInputEl.value = defaultChar;
             document.getElementById('rpt-note').value = '';
+            refreshCharPills();
         });
     }
 
     // Handle task creation and storage
     document.getElementById('rpt-save-btn').addEventListener('click', () => {
         const title = document.getElementById('rpt-title').value;
-        const char = document.getElementById('rpt-char').value;
+        const char = charInputEl.value;
         const type = document.getElementById('rpt-type').value;
         const rawDate = document.getElementById('rpt-date').value;
         const note = document.getElementById('rpt-note').value.trim();
 
         if (!rawDate) return alert('Пожалуйста, выбери дату!');
 
-        // SMART TIME INJECTION:
-        const oldDateObj = existingTask && existingTask.date ? existingTask.date : '';
-        const oldDay = oldDateObj.split('T')[0];
-        const oldTime = oldDateObj.split('T')[1];
+        const previousDate = existingTask ? existingTask.date : '';
+        const finalDateStr = buildTaskDateString(type, rawDate, previousDate);
 
-        let finalDateStr = rawDate;
-        if (type === 'deadline') {
-            finalDateStr = `${rawDate}T23:59:59`;
-        } else if (type === 'turn' || type === 'wait') {
-            const timeToUse = (existingTask && rawDate === oldDay && oldTime && oldTime !== '23:59:59')
-                ? oldTime
-                : new Date().toTimeString().split(' ')[0];
-            finalDateStr = `${rawDate}T${timeToUse}`;
-        }
-        // Daily tasks remain as is (just YYYY-MM-DD), their time is not important
-
-        // FETCH LATEST DATA RIGHT BEFORE SAVING TO PREVENT RACE CONDITIONS
-        // This ensures concurrent tabs don't overwrite each other's saves
+        // Fetch latest storage state immediately before saving to prevent race conditions across tabs
         chrome.storage.local.get(['rpgTasks', 'savedForums'], (result) => {
-            let latestTasks = result.rpgTasks || [];
-            let latestForums = result.savedForums || [];
+            const latestTasks = result.rpgTasks || [];
+            const latestForums = result.savedForums || [];
 
-            // Resolve character casing and auto-learn new characters
             const resolved = resolveAndLearnCharacters(forumChars, char);
             const finalCharTag = resolved.formattedTag;
 
@@ -218,7 +182,7 @@ function injectUI(forum, tasks) {
                     latestForums[forumIdx].characters = forumChars;
                     chrome.storage.local.set({ savedForums: latestForums });
                 }
-                renderContentCharPills();
+                refreshCharPills();
             }
 
             if (existingTask) {
@@ -247,14 +211,12 @@ function injectUI(forum, tasks) {
                 existingTask = newTask;
             }
 
-            // Persist data and provide visual feedback
             chrome.storage.local.set({ rpgTasks: latestTasks }, () => {
-                btn.innerHTML = ICON_CHECK_FAB; // Show checkmark icon
+                btn.innerHTML = ICON_CHECK_FAB;
                 modal.classList.remove('rpt-active');
 
-                // Reset button icon after 2 seconds
                 setTimeout(() => {
-                    btn.innerHTML = ICON_EDIT_FAB; // Show edit icon
+                    btn.innerHTML = ICON_EDIT_FAB;
                     btn.title = 'Тема уже в трекере (редактировать)';
                     document.getElementById('rpt-modal-header').textContent = 'Редактировать задачу';
                     document.getElementById('rpt-save-btn').textContent = 'Сохранить изменения';

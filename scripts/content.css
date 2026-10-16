@@ -5,8 +5,12 @@
  */
 
 /* ==========================================================================
-   1. Floating Action Button (FAB)
+   1. Utility Classes & Floating Action Button (FAB)
    ========================================================================== */
+
+.rpt-hidden {
+    display: none !important;
+}
 
 #rpt-floating-btn {
     position: fixed;
@@ -15,11 +19,11 @@
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background-color: #475569; /* Muted Indigo */
+    background-color: #475569; 
     color: #ffffff;
     border: none;
     cursor: pointer;
-    z-index: 999999; /* Max z-index to stay above forum headers/footers */
+    z-index: 999999;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     display: flex;
     align-items: center;
@@ -28,12 +32,12 @@
 }
 
 #rpt-floating-btn:hover {
-    background-color: #334155; /* Darker Indigo on hover */
+    background-color: #334155; 
     transform: scale(1.05);
 }
 
 /* ==========================================================================
-   2. Modal Container
+   2. Modal Container & Typography
    ========================================================================== */
 
 #rpt-modal {
@@ -50,18 +54,44 @@
     display: none;
     flex-direction: column;
     gap: 12px;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #e0e0e0;
 }
+
 #rpt-modal.rpt-active {
     display: flex;
 }
 
+#rpt-modal #rpt-modal-header {
+    margin: 0;
+    color: #64ffda;
+    font-size: 16px;
+    padding-bottom: 6px;
+}
+
+#rpt-modal #rpt-add-new-instead {
+    font-size: 11px;
+    color: #888888;
+    cursor: pointer;
+    text-decoration: underline;
+    margin-top: -6px;
+    margin-bottom: 4px;
+}
+
+#rpt-modal #rpt-add-new-instead:hover {
+    color: #e0e0e0;
+}
+
+#rpt-modal .rpt-label {
+    font-size: 12px;
+    color: #888888;
+    margin-bottom: -6px;
+}
+
 /* ==========================================================================
-   3. Modal Inner Elements (Inputs, Selects, Buttons)
+   3. Modal Inner Controls (Inputs, Selects, Pills, Buttons)
    ========================================================================== */
 
-/* Close icon */
 #rpt-modal .rpt-close {
     position: absolute;
     top: 10px;
@@ -76,7 +106,6 @@
     color: #ffffff;
 }
 
-/* Form inputs */
 #rpt-modal input, 
 #rpt-modal select,
 #rpt-modal textarea {
@@ -87,33 +116,16 @@
     color: #ffffff;
     border: 1px solid #333333;
     border-radius: 4px;
-    font-family: inherit; /* Override forum typography */
+    font-family: inherit; 
     font-size: 13px;
-    appearance: auto; /* Attempt to restore native browser UI */
+    appearance: auto; 
     resize: vertical;
-}
-
-/* Save button */
-#rpt-modal button#rpt-save-btn {
-    background-color: #64ffda;
-    color: #000;
-    border: none;
-    padding: 10px;
-    border-radius: 4px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    margin-top: 5px;
-}
-#rpt-modal button#rpt-save-btn:hover {
-    background-color: #52e0c4;
 }
 
 #rpt-date {
     color-scheme: dark;
 }
 
-/* Quick character selector pills in FAB modal */
 #rpt-modal .rpt-char-pills {
     display: flex;
     flex-wrap: wrap;
@@ -142,4 +154,19 @@
     border-color: #64ffda;
     color: #64ffda;
     background: rgba(100, 255, 218, 0.1);
+}
+
+#rpt-modal button#rpt-save-btn {
+    background-color: #64ffda;
+    color: #000;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 5px;
+}
+#rpt-modal button#rpt-save-btn:hover {
+    background-color: #52e0c4;
 }

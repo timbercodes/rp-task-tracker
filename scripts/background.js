@@ -1,13 +1,12 @@
 /**
  * RP Task Tracker - Background Service Worker
  * Built for Chrome Extension Manifest V3.
- * Handles extension lifecycle events and browser action clicks.
+ * Handles extension lifecycle events, toolbar icon clicks, and dynamic content script registration.
  */
 
 /**
  * Listens for clicks on the extension icon in the browser toolbar.
- * Opens the main dashboard in a new full-size tab for a better user experience,
- * rather than confining it to a small popup.
+ * Opens the main dashboard in a new full-size tab.
  */
 chrome.action.onClicked.addListener(() => {
     chrome.tabs.create({ url: 'dashboard/dashboard.html' });
@@ -47,21 +46,21 @@ async function updateContentScripts(forums) {
     }]);
 }
 
-// Initialize on extension startup
+// Initialize content scripts on browser startup
 chrome.runtime.onStartup.addListener(() => {
     chrome.storage.local.get(['savedForums'], (result) => {
         updateContentScripts(result.savedForums);
     });
 });
 
-// Initialize on extension installation or update
+// Initialize content scripts on extension installation or update
 chrome.runtime.onInstalled.addListener(() => {
     chrome.storage.local.get(['savedForums'], (result) => {
         updateContentScripts(result.savedForums);
     });
 });
 
-// Listen for changes in forum settings and update scripts dynamically
+// Dynamically update registered domains whenever forum settings change
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'local' && changes.savedForums) {
         updateContentScripts(changes.savedForums.newValue);

@@ -1,3 +1,12 @@
+/**
+ * RP Task Tracker - Core Stylesheet
+ * Shared styles for Dashboard, Onboarding/Settings, Modals, and Archive views.
+ */
+
+/* ==========================================================================
+   1. CSS Variables & Reset
+   ========================================================================== */
+
 :root {
     --bg-color: #121212;
     --surface: #1e1e1e;
@@ -14,20 +23,37 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-main); line-height: 1.5; }
 
+/* ==========================================================================
+   2. Utility & Layout Classes
+   ========================================================================== */
+
+.hidden { display: none !important; }
 .view-container { min-height: 100vh; display: flex; flex-direction: column; }
+.text-accent { color: var(--accent); font-weight: 600; }
+.text-danger { color: var(--red); }
+.text-muted { color: var(--text-muted); }
 
-/* --- Стили онбординга --- */
-#onboarding-view { justify-content: center; align-items: center; }
-.onboarding-card { background-color: var(--surface); padding: 40px; border-radius: 12px; width: 500px; border: 1px solid var(--border); }
-.onboarding-card h1 { margin-bottom: 10px; font-size: 1.8rem; }
-.onboarding-card p { color: var(--text-muted); margin-bottom: 25px; }
-
-input, textarea { background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border); padding: 12px; border-radius: 6px; font-size: 1rem; font-family: inherit; resize: vertical; }
-input:focus, textarea:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+/* ==========================================================================
+   3. Base Form Controls & Buttons
+   ========================================================================== */
 
 .form-group { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; }
-input { background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border); padding: 12px; border-radius: 6px; font-size: 1rem; font-family: inherit; }
-input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+
+input, select, textarea { background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border); padding: 12px; border-radius: 6px; font-size: 1rem; font-family: inherit; }
+input:focus, select:focus, textarea:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+
+/* Invert native calendar picker icon for dark theme */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
 .hint { font-size: 0.8rem; color: var(--text-muted); margin-top: -10px; }
 
 button { border: none; padding: 12px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1rem; }
@@ -35,143 +61,34 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 button:hover:not(:disabled) { opacity: 0.8; }
 .primary-btn { background-color: var(--accent); color: #000; }
 .secondary-btn { background-color: transparent; color: var(--text-main); border: 1px solid var(--border); }
+.danger-outline-btn { background-color: transparent; color: var(--red); border: 1px solid var(--red); }
 .success-btn { background-color: var(--green); color: #000; width: 100%; margin-top: 20px; }
+
+/* ==========================================================================
+   4. Onboarding & Settings View
+   ========================================================================== */
+
+#onboarding-view { justify-content: center; align-items: center; }
+.onboarding-card { background-color: var(--surface); padding: 40px; border-radius: 12px; width: 500px; border: 1px solid var(--border); }
+.onboarding-card h1 { margin-bottom: 10px; font-size: 1.8rem; }
+.onboarding-card p { color: var(--text-muted); margin-bottom: 25px; }
+
+.onboarding-actions { display: flex; gap: 10px; margin-top: 20px; }
+.onboarding-actions #btn-cancel-settings { flex: 1; }
+.onboarding-actions #btn-finish-onboarding { flex: 2; }
 
 .forums-list { display: flex; flex-direction: column; gap: 10px; }
 .forum-item { display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-color); padding: 12px; border-radius: 6px; border-left: 4px solid var(--accent); }
+.forum-info { flex: 1; padding-right: 10px; }
 .forum-info strong { display: block; }
 .forum-info span { font-size: 0.85rem; color: var(--text-muted); }
-.forum-actions button { background: none; border: none; font-size: 1.2rem; padding: 0 5px; cursor: pointer; }
+.forum-actions { display: flex; gap: 10px; }
+.forum-actions button { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; transition: color 0.2s; }
+.forum-actions button:hover { color: var(--text-main); }
 
-/* --- Стили дашборда (из старого кода) --- */
-#kanban-view header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background-color: var(--surface); border-bottom: 1px solid var(--border); }
-.board { display: flex; gap: 20px; padding: 30px 40px; overflow-x: auto; }
-.column { background-color: var(--surface); border-radius: 12px; padding: 20px; min-width: 300px; min-height: 70vh; flex: 1; border: 1px solid var(--border); }
-.column h2 { text-align: center; font-size: 1.2rem; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
-
-.task-card { background-color: var(--bg-color); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 8px; border-left: 4px solid var(--border); }
-.task-card.status-red { border-left-color: var(--red); }
-.task-card.status-yellow { border-left-color: var(--yellow); }
-.task-card.status-green { border-left-color: var(--green); }
-.task-header { display: flex; justify-content: space-between; align-items: flex-start; }
-.task-title { font-weight: 600; font-size: 1.1rem; }
-.task-title a { color: var(--text-main); text-decoration: none; }
-.task-title a:hover { text-decoration: underline; color: var(--accent); }
-.task-meta { font-size: 0.85rem; color: var(--text-muted); }
-.tag { background-color: #333; padding: 2px 8px; border-radius: 4px; color: #ccc; }
-.task-timer { font-size: 0.9rem; font-weight: 600; margin-top: 5px; }
-
-.task-note {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    font-style: italic;
-    margin-top: 8px;
-    padding: 6px 10px;
-    background-color: rgba(255, 255, 255, 0.03);
-    border-left: 2px solid var(--accent);
-    border-radius: 0 4px 4px 0;
-    white-space: pre-wrap;
-    word-break: break-word;
-}
-
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; }
-
-/* --- СТИЛИ ДЛЯ ВЫПОЛНЕННЫХ ЗАДАЧ --- */
-.task-card.completed {
-    opacity: 0.5; /* Делаем карточку полупрозрачной */
-    border-left-color: var(--text-muted) !important; /* Серая полоска сбоку */
-}
-
-.task-card.completed .task-title,
-.task-card.completed .task-timer {
-    text-decoration: line-through; /* Зачеркиваем название и таймер */
-    color: var(--text-muted) !important; /* Делаем текст тусклым */
-}
-
-/* Прячем карандашик у выполненных долгов, чтобы не путать пользователя */
-.task-card.completed .btn-edit-task {
-    display: none; 
-}
-
-/* --- Кнопки действий на карточке (SVG) --- */
-.task-actions {
-    display: flex; 
-    gap: 10px;
-}
-.task-actions button {
-    background: none; 
-    border: none; 
-    cursor: pointer; 
-    color: var(--text-muted); /* Делаем их серыми по умолчанию */
-    padding: 0;
-    transition: color 0.2s;
-}
-.task-actions button:hover {
-    color: var(--accent); 
-}
-
-/* --- Инверсия иконки календаря для темной темы (Windows/Chrome) --- */
-input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(1); /* Делаем черную иконку белой */
-    cursor: pointer;
-    opacity: 0.6;
-    transition: opacity 0.2s;
-}
-
-input[type="date"]::-webkit-calendar-picker-indicator:hover {
-    opacity: 1; /* Делаем ярче при наведении */
-}
-
-/* --- Forum list action buttons --- */
-.forum-actions {
-    display: flex;
-    gap: 10px;
-}
-.forum-actions button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-muted); /* Иконки по умолчанию серые */
-    padding: 0;
-    transition: color 0.2s;
-}
-.forum-actions button:hover {
-    color: var(--text-color); /* Подсветка при наведении */
-}
-
-/* ==========================================
-   SCROLLBAR FIX (v1.0.1)
-   Applies scrolling to individual forum columns
-   ========================================== */
-
-.task-list {
-    display: flex; 
-    flex-direction: column; 
-    gap: 15px; 
-    margin-top: 15px;
-    
-    /* Enable vertical scrolling within the column */
-    max-height: calc(100vh - 300px); /* Adjusted for column headers and padding */
-    overflow-y: auto;
-    padding-right: 8px; /* Space for the scrollbar */
-}
-
-/* Custom WebKit Scrollbar Styling */
-.task-list::-webkit-scrollbar { 
-    width: 6px; 
-}
-.task-list::-webkit-scrollbar-track { 
-    background: transparent; 
-}
-.task-list::-webkit-scrollbar-thumb { 
-    background: var(--border); /* Matches your dark theme border */
-    border-radius: 4px; 
-}
-.task-list::-webkit-scrollbar-thumb:hover { 
-    background: var(--text-muted); /* Highlights on hover */
-}
-
-/* --- Character Chips in Settings & Modals --- */
+/* ==========================================================================
+   5. Character Chips & Quick-Select Pills
+   ========================================================================== */
 .char-chips-container {
     display: flex;
     flex-wrap: wrap;
@@ -222,15 +139,14 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     color: var(--accent);
 }
 
-.char-inline-input {
-    padding: 2px 8px !important;
-    font-size: 0.8rem !important;
-    border-radius: 12px !important;
-    width: 130px !important;
+input.char-inline-input {
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    border-radius: 12px;
+    width: 130px;
     height: 24px;
 }
 
-/* Quick-select pills inside Task Edit Modal */
 .char-picker-pills {
     display: flex;
     flex-wrap: wrap;
@@ -260,4 +176,352 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     border-color: var(--accent);
     color: var(--accent);
     background-color: rgba(100, 255, 218, 0.08);
+}
+
+/* ==========================================================================
+   6. Main Task Board & Columns
+   ========================================================================== */
+
+/* --- Стили дашборда (из старого кода) --- */
+#board-view header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background-color: var(--surface); border-bottom: 1px solid var(--border); }
+#board-view header h1 { line-height: 1; }
+.dashboard-summary { font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; }
+.header-actions { display: flex; gap: 10px; }
+.board { display: flex; gap: 20px; padding: 30px 40px; overflow-x: auto; }
+.column { background-color: var(--surface); border-radius: 12px; padding: 20px; min-width: 300px; min-height: 70vh; flex: 1; border: 1px solid var(--border); }
+.column h2 { text-align: center; font-size: 1.2rem; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+.column-link { color: inherit; text-decoration: none; }
+.column-link:hover { text-decoration: underline; }
+.column-chars {display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; color: var(--text-muted); text-transform: none; letter-spacing: normal; margin-top: 5px; font-weight: normal; }
+.column-chars svg { opacity: 0.7; flex-shrink: 0; }
+
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.task-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.task-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.task-list::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+.task-list::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+.empty-column-state {
+    text-align: center;
+    padding: 30px 15px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    margin-top: 5px;
+    opacity: 0.7;
+}
+
+/* ==========================================================================
+   7. Task Cards
+   ========================================================================== */
+
+.task-card {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-left: 4px solid var(--border);
+}
+
+.task-card.status-red {
+    border-left-color: var(--red);
+}
+
+.task-card.status-yellow {
+    border-left-color: var(--yellow);
+}
+
+.task-card.status-green {
+    border-left-color: var(--green);
+}
+
+.task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.task-content {
+    flex: 1;
+    padding-right: 10px;
+}
+
+.task-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.task-title a {
+    color: var(--text-main);
+    text-decoration: none;
+}
+
+.task-title a:hover {
+    text-decoration: underline;
+    color: var(--accent);
+}
+
+.task-meta {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+
+.tag {
+    background-color: #333333;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #cccccc;
+}
+
+.task-note {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 8px;
+    padding: 6px 10px;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.task-timer {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-top: 5px;
+    color: var(--text-main);
+}
+
+.task-actions-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 15px;
+}
+
+.task-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.task-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0;
+    transition: color 0.2s;
+}
+
+.task-actions button:hover {
+    color: var(--accent);
+}
+
+/* Completed task state */
+.task-card.completed {
+    opacity: 0.5;
+    border-left-color: var(--text-muted) !important;
+}
+
+.task-card.completed .task-title,
+.task-card.completed .task-timer {
+    text-decoration: line-through;
+    color: var(--text-muted) !important;
+}
+
+.task-card.completed .btn-edit-task {
+    display: none;
+}
+
+/* ==========================================================================
+   8. Modals & Overlays
+   ========================================================================== */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-card {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 380px;
+    padding: 25px;
+    position: relative;
+}
+
+.modal-card h3 {
+    margin-bottom: 12px;
+    padding-right: 20px;
+}
+
+.modal-card p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 1.4rem;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.modal-close:hover {
+    color: var(--text-main);
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.modal-form input,
+.modal-form select,
+.modal-form textarea {
+    padding: 10px;
+    font-size: 0.95rem;
+}
+
+.modal-actions-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.modal-actions-row button {
+    flex: 1;
+}
+
+.modal-actions-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ==========================================================================
+   9. Archive View
+   ========================================================================== */
+
+.archive-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px;
+}
+
+.archive-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+}
+
+.archive-subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.archive-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.archive-empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 40px;
+    line-height: 1.6;
+}
+
+.archive-card {
+    background-color: var(--surface);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.archive-title {
+    color: var(--text-main);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+a.archive-title:hover {
+    text-decoration: underline;
+    color: var(--accent);
+}
+
+.archive-meta {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.archive-stats {
+    text-align: right;
+}
+
+.time-taken {
+    color: var(--accent);
+    font-weight: bold;
+}
+
+.archive-finish-date {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 5px;
 }
