@@ -57,19 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.get(['savedForums'], (result) => {
         if (result.savedForums && result.savedForums.length > 0) {
             forums = result.savedForums;
-
-            // =================================================================
-            // TODO: [AUTO-MIGRATOR v1.2.0] — REMOVE THIS BLOCK AFTER MIGRATION
-            // Automatically converts legacy comma-separated character strings into arrays
-            if (forums.some(f => typeof f.characters === 'string')) {
-                forums = forums.map(f => ({
-                    ...f,
-                    characters: getForumChars(f.characters)
-                }));
-                chrome.storage.local.set({ savedForums: forums });
-            }
-            // =================================================================
-
             showBoardView();
         }
     });
