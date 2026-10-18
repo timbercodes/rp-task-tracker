@@ -1,10 +1,21 @@
 # RP Task Tracker 🎲
 
+![Version](https://img.shields.io/badge/version-1.2.0-64ffda?style=flat-square&labelColor=1e1e1e)
+![Manifest](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)
+![JavaScript](https://img.shields.io/badge/Vanilla_JS-ES6+-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
+![CSS3](https://img.shields.io/badge/Styling-CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)
+![Store Status](https://img.shields.io/badge/Chrome_Web_Store-In_Review-ffeb3b?style=flat-square&labelColor=1e1e1e)
+
 [🇷🇺 Читать на русском](#русская-версия)
 
 A lightweight, privacy-first Chrome Extension designed for forum-based roleplay (RP) players to manage episodes, turn order, daily routines, and deadlines across multiple forums in one unified workspace.
 
 Built completely with Vanilla JavaScript (ES6+), this tracker provides a multi-forum task board and injects a smart, draggable Floating Action Button (FAB) directly into configured roleplay forums.
+
+## 📸 Screenshots
+
+<img width="1280" height="800" alt="RP Task Tracker — Main Board" src="https://github.com/user-attachments/assets/9c9fef4c-b14e-4e21-875a-57b8e1026032" />
+<img width="1280" height="800" alt="RP Task Tracker — In-Page Forum Button" src="https://github.com/user-attachments/assets/4a355356-38b0-434d-97d6-365b411e9339" />
 
 ## ✨ Key Features (v1.2.0)
 * **Multi-Forum Task Board:** Dynamic columns generated for each of your roleplay projects with live task counters and character lists.
@@ -13,7 +24,15 @@ Built completely with Vanilla JavaScript (ES6+), this tracker provides a multi-f
 * **Character Management & Filtering:** Organize characters as interactive chips in settings, assign multiple characters per episode, and filter the entire board by role in one click.
 * **Episode Micro-Notes ("Anti-Sclerosis"):** Attach plot reminders directly to task cards so you never forget what you wanted to write.
 * **Automated Daily Resets:** Daily routine tasks (lotteries, check-ins) automatically reset at midnight (UTC+3).
-* **Post Archive:** Keeps a searchable history of your completed posts and closed deadlines.
+* **Post Archive:** Keeps a clean history of your completed posts and closed deadlines.
+
+## 📦 Installation
+* **Chrome Web Store:** *Currently under review — direct store link coming soon!*
+* **Manual Installation (Developer Mode):**
+  1. Download the latest `.zip` archive from [**Releases (v1.2.0)**](https://github.com/timbercodes/rp-task-tracker/releases/latest) and extract it.
+  2. Open `chrome://extensions/` in your browser (Chrome, Edge, Brave, Opera, Yandex).
+  3. Enable **Developer mode** in the top-right corner.
+  4. Click **Load unpacked** and select the extracted folder.
 
 ## 🏗 Architecture & Tech Stack
 * **Platform:** Chrome Extension API (Manifest V3)
@@ -21,6 +40,13 @@ Built completely with Vanilla JavaScript (ES6+), this tracker provides a multi-f
 * **Dynamic Content Scripts:** Uses `chrome.scripting.registerContentScripts` to inject the in-page button strictly on domains explicitly added by the user.
 * **Storage:** `chrome.storage.local`. All data is strictly isolated and stored locally on the user's device.
 * **Styling:** Pure CSS3 with Custom Properties (CSS Variables).
+
+## 🗺 Roadmap
+- **v1.3.0**: MyBB API integration, separate settings, automation
+- **v1.4.0**: side panel, timeline view, mood tags, themes
+- **v1.5.0 / 2.0**: reports, statistics, backups and sync
+
+Details: [Milestones](https://github.com/timbercodes/rp-task-tracker/milestones)
 
 ---
 
@@ -35,11 +61,20 @@ Built completely with Vanilla JavaScript (ES6+), this tracker provides a multi-f
 * **Фильтрация по ролям и микро-заметки:** Быстрый фильтр задач по конкретному персонажу и поле для заметок к будущему посту.
 * **Сброс ежедневок:** Автоматическое обновление ежедневных задач (лотерей, перекличек) в 00:00 по МСК.
 
-### Установка вручную (Режим разработчика)
-1. Скачайте последний релиз в формате `.zip` и распакуйте в любую папку.
-2. Откройте в браузере (Chrome, Яндекс.Браузер, Edge, Opera) страницу `chrome://extensions/`.
-3. Включите переключатель **«Режим разработчика»** (Developer mode) в правом верхнем углу.
-4. Нажмите **«Загрузить распакованное расширение»** (Load unpacked) и выберите распакованную папку.
+### Установка
+* **Chrome Web Store:** *Расширение находится на проверке модераторами Google — ссылка появится здесь сразу после публикации!*
+* **Установка вручную (Режим разработчика):**
+  1. Скачайте последний архив `.zip` в разделе [**Releases (v1.2.0)**](https://github.com/timbercodes/rp-task-tracker/releases/latest) и распакуйте в любую папку.
+  2. Откройте в браузере (Chrome, Яндекс.Браузер, Edge, Opera) страницу `chrome://extensions/`.
+  3. Включите переключатель **«Режим разработчика»** (Developer mode) в правом верхнем углу.
+  4. Нажмите **«Загрузить распакованное расширение»** (Load unpacked) и выберите распакованную папку.
+
+### План развития (Roadmap)
+- **v1.3.0**: интеграция с MyBB API, отдельные настройки, автоматизация
+- **v1.4.0**: боковая панель, режим таймлайна, теги настроения, темы оформления
+- **v1.5.0 / 2.0**: генератор отчетов для банка, статистика, бэкапы и синхронизация
+
+Подробности: [Milestones](https://github.com/timbercodes/rp-task-tracker/milestones)
 
 ---
 
