@@ -4,7 +4,7 @@
 ![Manifest](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/Vanilla_JS-ES6+-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 ![CSS3](https://img.shields.io/badge/Styling-CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)
-![Store Status](https://img.shields.io/badge/Chrome_Web_Store-In_Review-ffeb3b?style=flat-square&labelColor=1e1e1e)
+![Store Status](https://img.shields.io/badge/Chrome_Web_Store-Available-69f0ae?style=flat-square&labelColor=1e1e1e)
 
 [🇷🇺 Читать на русском](#русская-версия)
 
@@ -27,7 +27,7 @@ Built completely with Vanilla JavaScript (ES6+), this tracker provides a multi-f
 * **Post Archive:** Keeps a clean history of your completed posts and closed deadlines.
 
 ## 📦 Installation
-* **Chrome Web Store:** *Currently under review — direct store link coming soon!*
+* **Chrome Web Store:** [link](https://chromewebstore.google.com/detail/rp-task-tracker/ejddkjmlihcbapnippfmliiiaddilnon?authuser=0&hl=ru)
 * **Manual Installation (Developer Mode):**
   1. Download the latest `.zip` archive from [**Releases (v1.2.0)**](https://github.com/timbercodes/rp-task-tracker/releases/latest) and extract it.
   2. Open `chrome://extensions/` in your browser (Chrome, Edge, Brave, Opera, Yandex).
@@ -62,7 +62,7 @@ Details: [Milestones](https://github.com/timbercodes/rp-task-tracker/milestones)
 * **Сброс ежедневок:** Автоматическое обновление ежедневных задач (лотерей, перекличек) в 00:00 по МСК.
 
 ### Установка
-* **Chrome Web Store:** *Расширение находится на проверке модераторами Google — ссылка появится здесь сразу после публикации!*
+* **Chrome Web Store:** [ссылка](https://chromewebstore.google.com/detail/rp-task-tracker/ejddkjmlihcbapnippfmliiiaddilnon?authuser=0&hl=ru)
 * **Установка вручную (Режим разработчика):**
   1. Скачайте последний архив `.zip` в разделе [**Releases (v1.2.0)**](https://github.com/timbercodes/rp-task-tracker/releases/latest) и распакуйте в любую папку.
   2. Откройте в браузере (Chrome, Яндекс.Браузер, Edge, Opera) страницу `chrome://extensions/`.
